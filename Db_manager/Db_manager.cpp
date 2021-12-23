@@ -20,7 +20,6 @@ namespace db {
     return 0;
   }
 
-
   constexpr char db_filename[] = "test.db";
   enum status {OK, FAILED, USER_EXISTS};
   class Db_manager {
@@ -33,12 +32,23 @@ namespace db {
       err = sqlite3_open(db_filename, &db);
       CHECK;
       cmd = "CREATE TABLE IF NOT EXISTS UserList ("
-	"id INTEGER PRIMARY KEY AUTOINCREMENT,"
-	"name TEXT NOT NULL,"
-	"password TEXT NOT NULL"
-	");";
+	"name TEXT PRIMARY KEY,"
+	"password TEXT NOT NULL)";
       err = sqlite3_exec(db, cmd.c_str(), 0, 0, &errmsg);
       CHECK;
+      cmd = "CREATE TABLE IF NOT EXISTS UserInfo ("
+	"name TEXT PRIMARY KEY"
+	"friendList TEXT NOT NULL"
+	"chatroomList TEXT NOT NULL)";
+      err = sqlite3_exec(db, cmd.c_str(), 0, 0, &errmsg);
+      CHECK;
+      cmd = "CREATE TABLE IF NOT EXISTS FriendRequest ("
+	"from TEXT NOT NULL"
+	"to TEXT NOT NULL"
+	"UNIQUE(from, to))";
+      err = sqlite3_exec(db, cmd.c_str(), 0, 0, &errmsg);
+      CHECK;
+
     }
 
     ~Db_manager() {

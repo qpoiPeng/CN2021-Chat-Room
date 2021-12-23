@@ -4,11 +4,13 @@ columnName1, columnName2
 
 
 UserList : 記錄所有的 user
-id, name, password
+name, password
 
-UserInfo :
-id, name, friendList (string), chatroomList
+UserInfo : 你有哪些朋友，在哪些 chatroom
+name, friendList (string), chatroomList
 
+FriendRequest : 記錄交友邀請
+from, to
 
 /* if type == user, content is user name, time is last read time */
 DirectMessage_[user1]_[user2] :

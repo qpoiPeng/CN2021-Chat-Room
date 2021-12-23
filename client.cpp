@@ -106,6 +106,23 @@ int sign_in(int fd) {
 }
 
 int home(int fd) {
+  constexpr char prompt[] = "\nHome\n"
+    " (1) List all friends\n"
+    " (2) Send friend request\n"
+    " (3) Confirm friend request(s)\n"
+    " (4) Direct message\n"
+    " (5) Log out and quit\n";
+
+  std::string s;
+  while (true) {
+    printf("%s", prompt);
+    std::getline(std::cin, s);
+    strncpy(buf, s.c_str(), BUF_SIZE);
+    send(fd, buf, BUF_SIZE, 0);
+
+    
+  }
+
   return 0;
 }
 

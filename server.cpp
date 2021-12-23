@@ -49,6 +49,23 @@ struct Server {
 };
 Server server;
 
+struct Client {
+  std::string name;
+  int fd;
+  Client(std::string nm = "", int fd = -1) {
+    name = nm, this->fd = fd;
+  }
+  int send(char *buf) {
+    int ret = ::send(fd, buf, BUF_SIZE, MSG_NOSIGNAL);
+    if (ret < 0 && errno == EPIPE)
+      return -1;
+    return ret;
+  }
+  int recv(char *buf) {
+    return recv(fd, buf, BUF_SIZE, MSG_WAITALL);
+  }
+};
+
 int init_server(Server *server) {
   if ((server->listen_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     fprintf(stderr, "create socket failed...\n");
@@ -96,14 +113,23 @@ void cleanup(int id) {
   fprintf(stderr, "%d disconnected\n", id);
 }
 
-std::vector<std::string> split_string(std::string s) {
+std::vector<std::string> split_string(std::string s, std::string delim = " ") {
   std::vector<std::string> ret;
   int cur = 0, pos = 0;
-  while ((pos = s.find(" ", cur)) != -1) {
+  while ((pos = s.find(delim, cur)) != -1) {
     ret.push_back(s.substr(cur, pos - cur));
     cur = pos + 1;
   }
-  ret.push_back(s.substr(cur));
+  if (s.substr(cur) != "")
+    ret.push_back(s.substr(cur));
+  return ret;
+}
+
+std::string merge_string(std::vector<std::string> v, std::string delim = ",") {
+  std::string ret;
+  for (auto s : v)
+    ret += s + delim;
+  ret = ret.substr(0, std::max((int) ret.length() - (int)delim.length(), 0));
   return ret;
 }
 
@@ -177,8 +203,36 @@ int sign_in(int client_fd) {
   return 1;
 }
 
+constexpr char wrong_format[] = "Wrong format. Please try again.\n";
+
 void home(int client_fd) {
-  fprintf(stderr ,"HOME\n");
+  char buf[BUF_SIZE+1] = {};
+  std::string s;
+
+  while (true) {
+    if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
+      break;
+    s = buf;
+    if (s == "1") {  // list friend
+      
+    }
+    else if (s == "2") {  // send request
+
+    }
+    else if (s == "3") {  // confirm request
+
+    }
+    else if (s == "4") {  // direct message
+
+    }
+    else if (s == "5") {  // quit
+      break;
+    }
+    else {
+      if (send(client_fd, wrong_format, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
+	break;
+    }
+  }
 }
 
 void _serve(int client_fd, int client_id) {
@@ -187,6 +241,7 @@ void _serve(int client_fd, int client_id) {
   constexpr char wrong_format[] = "Wrong format. Please try again.\n";
   char buf[BUF_SIZE+1] = {};
   std::string s;
+  Client *client = new Client;
   while (true) {
     if (send(client_fd, welcome, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
       goto THREAD_END;
@@ -219,6 +274,7 @@ void _serve(int client_fd, int client_id) {
 	goto THREAD_END;
     }
   }
+  delete client;
  THREAD_END:
   cleanup(client_id);
   close(client_fd);

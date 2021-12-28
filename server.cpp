@@ -21,6 +21,8 @@ constexpr int BUF_SIZE = 2048;
 constexpr int NAMELEN = 64;
 constexpr int MAX_FILE_COUNT = 1024;
 
+constexpr char wrong_format[] = "Wrong format. Please try again.\n";
+
 void _serve(int client_fd, int client_id);
 struct Server {
   unsigned short port;
@@ -52,18 +54,187 @@ Server server;
 struct Client {
   std::string name;
   int fd;
-  Client(std::string nm = "", int fd = -1) {
-    name = nm, this->fd = fd;
+  Client(int fd) {
+    this->fd = fd;
   }
-  int send(char *buf) {
+  int send(const char *buf) {
     int ret = ::send(fd, buf, BUF_SIZE, MSG_NOSIGNAL);
     if (ret < 0 && errno == EPIPE)
       return -1;
     return ret;
   }
   int recv(char *buf) {
-    return recv(fd, buf, BUF_SIZE, MSG_WAITALL);
+    return ::recv(fd, buf, BUF_SIZE, MSG_WAITALL);
   }
+  int sign_up() {
+    std::string username, password, password2;
+    char buf[BUF_SIZE+1] = {};
+    if (send(sig::sign_up) < 0) 
+      return -1;
+
+    if (recv(buf) <= 0)
+      return -1;
+    username = buf;
+
+    memset(buf, 0, BUF_SIZE+1);
+    if (recv(buf) <= 0)
+      return -1;
+    password = buf;
+
+    memset(buf, 0, BUF_SIZE+1);
+    if (recv(buf) <= 0)
+      return -1;
+    password2 = buf;
+  
+    if (password != password2) {
+      constexpr char password_prompt2[] = "password error.\n";
+      if (send(password_prompt2) < 0)
+	return -1;
+    }
+    else {
+      server.db_mtx.lock();
+      db::status res = server.db_manager.sign_up(username, password);
+      server.db_mtx.unlock();
+      if (res == db::status::OK) {
+	constexpr char success[] = "Create account successfully!\n";
+	if (send(success) < 0)
+	  return -1;
+      }
+      else {
+	constexpr char failed[] = "The username is used. Please try again.\n";
+	if (send(failed) < 0)
+	  return -1;
+      }
+    }
+    return 0;
+  }
+  
+  int sign_in() {
+    if (send(sig::sign_in) < 0)
+      return -1;
+    char buf[BUF_SIZE+1] = {};
+    std::string username, password;
+
+    if (recv(buf) <= 0)
+      return -1;
+    username = buf;
+
+    memset(buf, 0, BUF_SIZE+1);
+    if (recv(buf) <= 0)
+      return -1;
+    password = buf;
+
+    db::status res = server.db_manager.sign_in(username, password);
+    if (res == db::status::OK) {
+      if (send(sig::sign_in_success) < 0)
+	return -1;
+      this->name = username;
+      return 0;
+    }
+    // else
+    if (send(sig::sign_in_fail) < 0)
+      return -1;
+    return 1;
+  }
+
+  void home() {
+    char buf[BUF_SIZE+1] = {};
+    std::string s;
+
+    while (true) {
+      if (recv(buf) <= 0)
+	break;
+      s = buf;
+      if (s == "1") {  // list friend
+      
+      }
+      else if (s == "2") {  // send request
+	if (friend_request() < 0)
+	  break;
+      }
+      else if (s == "3") {  // confirm request
+	
+      }
+      else if (s == "4") {  // delete friend
+
+      }
+      else if (s == "5") {  // direct message
+
+      }
+      else if (s == "6") {  // quit
+	send(sig::quit);
+	break;
+      }
+      else {
+	if (send(wrong_format) < 0)
+	  break;
+      }
+    }
+  }
+
+  int friend_request() {
+    if (send(sig::create_friend_request) < 0)
+      return -1;
+    char buf[BUF_SIZE+1] = {};
+    std::string destination;
+    if (recv(buf) <= 0)
+      return -1;
+    destination = buf;
+    if (destination == name) {
+      if (send(sig::request_self) < 0)
+	return -1;
+    }
+    else if (server.db_manager.if_user_exists(destination) == db::status::USER_NOT_EXISTS) {
+      if (send(sig::user_not_exists) < 0)
+	return -1;
+    }
+    else {
+      if (server.db_manager.create_friend_request(name, destination) == db::status::DUPLICATED_REQUEST) {
+	if (send(sig::duplicated_request) < 0)
+	  return -1;
+      }
+      if (send(sig::ok) < 0)
+	return -1;
+    }
+    return 0;
+  }
+
+  int confirm_friend_request() {
+    if (send(sig::confirm_friend_request) < 0)
+      return -1;
+    std::vector<std::string> request_list;
+    server.db_manager.get_friend_request_list(name, request_list);    // no check yet!
+    sort(request_list.begin(), request_list.end());
+    int size = request_list.size();
+    std::string s;
+    char buf[BUF_SIZE+1] = {};
+    sprintf(buf, "%d", size);
+    send(buf);
+    for (int i = 0; i < size; ++i) {
+      sprintf(buf, "%s", request_list[i].c_str());
+      send(buf);
+    }
+    int idx = 0;
+    if (size > 0) {
+      memset(buf, 0, BUF_SIZE+1);
+      recv(buf);
+      try {
+	s = buf;
+	idx = stoi(s);
+      }
+      catch (std::exception e) {
+	send(sig::wrong_format);
+	return 0;
+      }
+    }
+    if (idx > size || idx < -size) {
+      send(sig::wrong_format);
+      return 0;
+    }
+    
+    return 0;
+  }
+
 };
 
 int init_server(Server *server) {
@@ -86,7 +257,6 @@ int init_server(Server *server) {
     fprintf(stderr, "listen failed...\n");
     return -1;
   }
-
   return 0;
 }
 
@@ -133,144 +303,41 @@ std::string merge_string(std::vector<std::string> v, std::string delim = ",") {
   return ret;
 }
 
-int sign_up(int client_fd) {
-  std::string username, password, password2;
-  char buf[BUF_SIZE+1] = {};
-  if (send(client_fd, sig::sign_up, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-    return -1;
-
-  if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-    return -1;
-  username = buf;
-
-  memset(buf, 0, BUF_SIZE+1);
-  if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-    return -1;
-  password = buf;
-
-  memset(buf, 0, BUF_SIZE+1);
-  if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-    return -1;
-  password2 = buf;
-  
-  if (password != password2) {
-    constexpr char password_prompt2[] = "password error.\n";
-    if (send(client_fd, password_prompt2, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-      return -1;
-  }
-  else {
-    server.db_mtx.lock();
-    db::status res = server.db_manager.sign_up(username, password);
-    server.db_mtx.unlock();
-    if (res == db::status::OK) {
-      constexpr char success[] = "Create account successfully!\n";
-      if (send(client_fd, success, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-	return -1;
-    }
-    else {
-      constexpr char failed[] = "The username is used. Please try again.\n";
-      if (send(client_fd, failed, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-	return -1;
-    }
-  }
-  return 0;
-}
-
-int sign_in(int client_fd) {
-  if (send(client_fd, sig::sign_in, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-    return -1;
-  char buf[BUF_SIZE+1] = {};
-  std::string username, password;
-
-  if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-    return -1;
-  username = buf;
-
-  memset(buf, 0, BUF_SIZE+1);
-  if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-    return -1;
-  password = buf;
-
-  db::status res = server.db_manager.sign_in(username, password);
-  if (res == db::status::OK) {
-    if (send(client_fd, sig::sign_in_success, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-      return -1;
-    return 0;
-  }
-  // else
-  if (send(client_fd, sig::sign_in_fail, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-    return -1;
-  return 1;
-}
-
-constexpr char wrong_format[] = "Wrong format. Please try again.\n";
-
-void home(int client_fd) {
-  char buf[BUF_SIZE+1] = {};
-  std::string s;
-
-  while (true) {
-    if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
-      break;
-    s = buf;
-    if (s == "1") {  // list friend
-      
-    }
-    else if (s == "2") {  // send request
-
-    }
-    else if (s == "3") {  // confirm request
-
-    }
-    else if (s == "4") {  // direct message
-
-    }
-    else if (s == "5") {  // quit
-      break;
-    }
-    else {
-      if (send(client_fd, wrong_format, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
-	break;
-    }
-  }
-}
-
 void _serve(int client_fd, int client_id) {
   fprintf(stderr, "new client served, client_fd : %d, client_id : %d\n", client_fd, client_id);
   constexpr char welcome[] = "(1) Login (2) Register (3) Quit\n";
-  constexpr char wrong_format[] = "Wrong format. Please try again.\n";
   char buf[BUF_SIZE+1] = {};
   std::string s;
-  Client *client = new Client;
+  Client *client = new Client(client_fd);
   while (true) {
-    if (send(client_fd, welcome, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
+    if (client->send(welcome) < 0)
       goto THREAD_END;
     
     memset(buf, 0, BUF_SIZE+1);
-    if (recv(client_fd, buf, BUF_SIZE, MSG_WAITALL) <= 0)
+    if (client->recv(buf) <= 0)
       goto THREAD_END;
     s = buf;
     if (s == "1") { // login
-      int res = sign_in(client_fd);
+      int res = client->sign_in();
       if (res < 0)  // disconnect
 	break;
       else if (res == 0) {  // success
-	home(client_fd);
+	client->home();
 	break;
       }
       // fail and try again.
     }
     else if (s == "2") {  // register
-      if (sign_up(client_fd) < 0)
+      if (client->sign_up() < 0)
 	break;
     }
     else if (s == "3") {  // quit
-      if (send(client_fd, sig::quit, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
+      if (client->send(sig::quit) < 0)
 	goto THREAD_END;
       break;
     }
     else {  // wrong input
-      if (send(client_fd, wrong_format, BUF_SIZE, MSG_NOSIGNAL) < 0 && errno == EPIPE)
+      if (client->send(wrong_format) < 0)
 	goto THREAD_END;
     }
   }

@@ -105,13 +105,38 @@ int sign_in(int fd) {
   return -1;
 }
 
+int create_friend_request(int fd) {
+  printf("\nWho do you want to send a friend request to?\nHis/Her name: ");
+  std::string s;
+  std::getline(std::cin, s);
+  strncpy(buf, s.c_str(), BUF_SIZE);
+  send(fd, buf, BUF_SIZE, 0);
+  clear_buf();
+  recv(fd, buf, BUF_SIZE, 0);
+  s = buf;
+  if (s == sig::ok) {
+    printf("The friend request is sent successfully!\n");
+  }
+  else if (s == sig::request_self) {
+    printf("You can't send a friend request to yourself!\n");
+  }
+  else if (s == sig::duplicated_request) {
+    printf("The friend request has been sent before.\n");
+  }
+  else {
+    printf("User not exists.\n");
+  }
+  return 0;
+}
+
 int home(int fd) {
   constexpr char prompt[] = "\nHome\n"
     " (1) List all friends\n"
     " (2) Send friend request\n"
     " (3) Confirm friend request(s)\n"
-    " (4) Direct message\n"
-    " (5) Log out and quit\n";
+    " (4) Delete friend\n"
+    " (5) Direct message\n"
+    " (6) Log out and quit\n";
 
   std::string s;
   while (true) {
@@ -119,8 +144,15 @@ int home(int fd) {
     std::getline(std::cin, s);
     strncpy(buf, s.c_str(), BUF_SIZE);
     send(fd, buf, BUF_SIZE, 0);
-
-    
+    clear_buf();
+    recv(fd, buf, BUF_SIZE, 0);
+    s = buf;
+    if (s == sig::create_friend_request) {
+      create_friend_request(fd);
+    }
+    else if (s == sig::quit) {
+      break;
+    }
   }
 
   return 0;
@@ -145,97 +177,16 @@ int main(int argc, char *argv[]) {
     if ((s = buf) == sig::sign_up) {
       sign_up(client.conn_fd);
     }
-    else if ((s = buf) == sig::sign_in) {
+    else if (s == sig::sign_in) {
       int res = sign_in(client.conn_fd);
       if (res == 0) {
 	home(client.conn_fd);
 	break;
       }
     }
-    else if ((s = buf) == sig::quit) {
+    else if (s == sig::quit) {
       break;
     }
-
   }
-  
-  /*
-  while (true) {
-    std::string s;
-    recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-    printf("%s", buf);
-    if (buf[0] == 'c')
-      break;
-    clear_buf();
-    std::getline(std::cin, s);
-    strcpy(buf, s.c_str());
-    send(client.conn_fd, buf, BUF_SIZE, 0);
-    clear_buf();
-  }
-  
-  while (true) {
-    clear_buf();
-    std::string s;
-    std::getline(std::cin, s);
-    strcpy(buf, s.c_str());
-    send(client.conn_fd, buf, BUF_SIZE, 0);
-    clear_buf(); 
-    recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-    if (!strcmp(buf, ls_start)) {
-      clear_buf();
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      int size = atoi(buf);
-      for (int i = 0; i < size; ++i) {
-	clear_buf();
-	recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-	printf("%s", buf);
-      }
-    }
-    else if (!strcmp(buf, put_start)) {
-      clear_buf();
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);  // get filename from server (?
-      FILE *fp = fopen(buf, "rb");
-      if (!fp) {
-	printf("The %s doesn’t exist\n", &buf[13]);
-	send(client.conn_fd, no_put, BUF_SIZE, 0);
-	continue;
-      }
-      long long sz = fsize(buf);
-      sprintf(buf, "%lld", sz);
-      send(client.conn_fd, buf, BUF_SIZE, 0);
-      clear_buf();
-      while (readfile(buf, BUF_SIZE, fp, &sz)) {
-	send(client.conn_fd, buf, BUF_SIZE, 0);
-	clear_buf();
-      }
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      printf("%s", buf);
-      fclose(fp);
-    }
-    else if (!strcmp(buf, get_start)) {
-      clear_buf();
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      std::string filename = "./client_dir/";
-      filename += buf;
-      FILE *fp = fopen(filename.c_str(), "wb");
-      clear_buf();
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      long long sz = atoll(buf);
-      if (sz != 0) {
-	clear_buf();
-	recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      }
-      while (writefile(buf, BUF_SIZE, fp, &sz)) {
-	clear_buf();
-	recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      }
-      fclose(fp);
-      clear_buf();
-      recv(client.conn_fd, buf, BUF_SIZE, MSG_WAITALL);
-      printf("%s", buf);
-    }
-    else {
-      printf("%s", buf);
-    }
-  }
-  */
+ 
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 namespace sig {
   constexpr char ok[] = "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22";
   constexpr char sign_in[] = "de2d13ed346c210fa05eb34da113826630a672fdcbd5a20018ddd15bf4f7b8f4";

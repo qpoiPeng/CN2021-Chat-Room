@@ -1,3 +1,6 @@
 test.db
-client
+web_client
+console_client
 server
+
+.vscode

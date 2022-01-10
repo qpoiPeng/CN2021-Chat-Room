@@ -8,7 +8,7 @@
 #include "WebServer.hpp"
 
 // Handler for when a message is received from the client
-void WebServer::on_message_received(int client_socket, const char *msg, int length) {
+int WebServer::on_message_received(int client_socket, const char *msg, int length) {
 
     // Parse out the document requested (gives all strings separated by spaces)
     std::istringstream iss(msg);
@@ -50,14 +50,18 @@ void WebServer::on_message_received(int client_socket, const char *msg, int leng
     int size = output.size() + 1;
 
     send_to_client(client_socket, output.c_str(), size);
+
+    return 0;
 }
 
 // Handler for client connections
-void WebServer::on_client_connected(int client_socket) {
+int WebServer::on_client_connected(int client_socket) {
 
+    return 0;
 }
 
 // Handler for client disconnections
-void WebServer::on_client_disconnected(int client_socket) {
+int WebServer::on_client_disconnected(int client_socket) {
 
+    return 0;
 }

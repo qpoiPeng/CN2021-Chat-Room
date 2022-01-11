@@ -44,9 +44,8 @@ class Chat extends Component {
             room: this.props.match.params.room
         }
 
-        params.action = "join"
         (async () => {
-                const rawResponse = await fetch('http://localhost:8080', {
+                const rawResponse = await fetch('http://localhost:8080/api/join', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -60,6 +59,7 @@ class Chat extends Component {
 
             this.props.history.push('/');
         })();
+
         // socket.emit('join', params, function (err) {
         //     if (err) {
         //         this.props.history.push('/');

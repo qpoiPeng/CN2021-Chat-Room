@@ -6,9 +6,9 @@
   "private": true,
   "dependencies": {
     "classnames": "^2.2.6",
+    "create-react-app": "^5.0.0",
     "moment": "^2.22.2",
-    "node-sass": "^4.10.0",
-    "raw-socket": "^1.7.0",
+    "node-sass": "^4.14.0",
     "react": "^16.6.0",
     "react-dom": "^16.6.0",
     "react-loading-screen": "^0.0.17",
@@ -16,7 +16,8 @@
     "socket.io-client": "^2.1.1"
   },
   "devDependencies": {
-    "react-scripts": "2.1.1"
+    "react-scripts": "2.1.1",
+    "sass": "^1.47.0"
   },
   "scripts": {
     "start": "react-scripts start",

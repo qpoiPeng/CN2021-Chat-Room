@@ -229,7 +229,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 // };
 
     std::cerr << "Received message: " << msg << " from " << client_socket << std::endl;
-    broadcast_to_clients(client_socket, msg, length);
+    // broadcast_to_clients(client_socket, msg, length);
 
     return 0;
 }

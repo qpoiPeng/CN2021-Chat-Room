@@ -5,9 +5,7 @@ import ActiveUsers from './../components/activeUsers';
 import Messages from './../components/messages';
 // import moment from 'moment';
 import LoadingScreen from 'react-loading-screen';
-
-// var raw = require("raw-socket");
-const net = require("net");
+import axios from 'axios';
 
 
 // var socket = raw.createSocket ({protocol: raw.Protocol.None});
@@ -18,6 +16,12 @@ const initialState = {
     newMsg: '',
     fetchingLocation: false
 }
+
+const postUserJoin = async (params) => {
+    const response = await axios.post("http://localhost:8081/api/join", params);
+    console.log(response.data);
+}
+
 
 class Chat extends Component {
 
@@ -44,21 +48,9 @@ class Chat extends Component {
             room: this.props.match.params.room
         }
 
-        (async () => {
-                const rawResponse = await fetch('http://localhost:8080/api/join', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(params)
-            });
-            const content = await rawResponse.json();
+        console.log("Mounted");
 
-            console.log(content);
-
-            this.props.history.push('/');
-        })();
+        postUserJoin(params);
 
         // socket.emit('join', params, function (err) {
         //     if (err) {

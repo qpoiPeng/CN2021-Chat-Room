@@ -14,6 +14,8 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     // Parse out the request (gives all strings separated by spaces)
     std::istringstream iss(msg);
     std::vector<std::string> parsed((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
+    HttpRequest hr(msg, client_socket);
+    hr.show();
 
     if (parsed[0] == "1") { // login
         // int sign_in() {
@@ -228,9 +230,6 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 //   }
 
 // };
-    HttpRequest hr(msg, client_socket);
-    hr.show();
-    db_manager.sign_up("123", "123");
     // std::cerr << msg;
 
     return 0;

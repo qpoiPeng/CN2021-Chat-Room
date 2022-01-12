@@ -26,7 +26,7 @@ int db::get_request_string(void* s, int argc, char **argv, char **colName) {
     return 0;
 }
 
-std::vector<std::string> db::split_string(std::string s, std::string delim = " ") {
+std::vector<std::string> db::split_string(std::string s, std::string delim) {
     std::vector<std::string> ret;
     int cur = 0, pos = 0;
     while ((pos = s.find(delim, cur)) != -1) {
@@ -38,7 +38,7 @@ std::vector<std::string> db::split_string(std::string s, std::string delim = " "
     return ret;
 }
 
-std::string db::merge_string(std::vector<std::string> v, std::string delim = ",") {
+std::string db::merge_string(std::vector<std::string> v, std::string delim) {
     std::string ret;
     for (auto s : v)
         ret += s + delim;

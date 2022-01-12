@@ -109,7 +109,7 @@ int TcpListener::run() {
 
 // Send a message to a client
 void TcpListener::send_to_client(int client_socket, const char* msg, int length) {
-    send(client_socket, msg, length, MSG_NOSIGNAL);
+    send(client_socket, msg, length, 0);
 }
 
 // Broadcast a message from a client

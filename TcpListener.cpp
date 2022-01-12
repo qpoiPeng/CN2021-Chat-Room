@@ -43,7 +43,7 @@ void TcpListener::_serve(int client_fd, int client_id) {
     std::cerr << "new client served, client_fd : " << client_fd << ", client_id : " << client_id << std::endl;
 
     while(true) {
-        char buf[BUF_SIZE];
+        char buf[BUF_SIZE+1];
         memset(buf, 0, BUF_SIZE+1);
         int bytes_in = recv(client_fd, buf, BUF_SIZE, 0);
         if (bytes_in <= 0) {

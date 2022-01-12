@@ -6,6 +6,7 @@
 #include <vector>
 #include <streambuf>
 #include <iterator>
+#include "HttpParser/HttpParser.hpp"
 
 // Handler for when a message is received from the client
 int MultiClientChat::on_message_received(int client_socket, const char *msg, int length) {
@@ -14,7 +15,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     std::istringstream iss(msg);
     std::vector<std::string> parsed((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
 
-    if(parsed[0] == "1") { // login
+    if (parsed[0] == "1") { // login
         // int sign_in() {
         // if (send(sig::sign_in) < 0)
         //     return -1;
@@ -43,7 +44,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
         // return 1;
         // }
     }
-    else if(parsed[0] == "2") { // signup
+    else if (parsed[0] == "2") { // signup
         // std::string username, password;
 
         // char buf[BUF_SIZE+1] = {};
@@ -87,7 +88,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
         // }
 
     }
-    else if(parsed[0] == "3") { // quit
+    else if (parsed[0] == "3") { // quit
 
     }
     else {
@@ -227,10 +228,13 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 //   }
 
 // };
+    HttpRequest hr(msg);
+    hr.show();
+    
+    // std::cerr << msg;
 
-    std::cerr << "Received message: " << msg << " from " << client_socket << std::endl;
-    broadcast_to_clients(client_socket, msg, length);
-
+    // for (auto&& s : parsed)
+    //    std::cerr << s << std::endl;    
     return 0;
 }
 

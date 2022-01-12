@@ -22,9 +22,9 @@ namespace db {
 
     int get_request_string(void* s, int argc, char **argv, char **colName);
 
-    std::vector<std::string> split_string(std::string s, std::string delim = " ");
+    std::vector<std::string> split_string(std::string s, std::string delim);
 
-    std::string merge_string(std::vector<std::string> v, std::string delim = ",");
+    std::string merge_string(std::vector<std::string> v, std::string delim);
 
     class Db_manager {
         public:

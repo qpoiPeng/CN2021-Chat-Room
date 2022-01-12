@@ -230,7 +230,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 // };
     HttpRequest hr(msg, client_socket);
     hr.show();
-    
+    db_manager.sign_up("123", "123");
     // std::cerr << msg;
 
     return 0;

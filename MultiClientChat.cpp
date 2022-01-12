@@ -233,8 +233,6 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     
     // std::cerr << msg;
 
-    // for (auto&& s : parsed)
-    //    std::cerr << s << std::endl;    
     return 0;
 }
 

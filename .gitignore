@@ -2,5 +2,8 @@ test.db
 web_client
 console_client
 server
-
+node_modules
+*/node_modules
+*/*/node_modules
 .vscode
+.history

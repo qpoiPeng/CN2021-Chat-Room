@@ -4,8 +4,9 @@
 #include<iostream>
 #include<cstring>
 #include<vector>
+#include<ctime>
 
-#define CHECK if (err) {				\
+#define CHECK if (err) {					\
     std::cerr << sqlite3_errmsg(database) << '\n';		\
 }
 
@@ -26,18 +27,16 @@ namespace db {
 
     std::string merge_string(std::vector<std::string> v, std::string delim);
 
+    std::string get_dmname(std::string& user1, std::string& user2); // this will sort user1 and user2 !
+
     class Db_manager {
         public:
             Db_manager() {
                 err = sqlite3_open(db::db_filename, &database);
                 CHECK;
                 cmd = "CREATE TABLE IF NOT EXISTS UserList ("
-                    "name TEXT PRIMARY KEY,"
-                    "password TEXT NOT NULL)";
-                err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
-                CHECK;
-                cmd = "CREATE TABLE IF NOT EXISTS UserInfo ("
                     "name TEXT PRIMARY KEY, "
+                    "password TEXT NOT NULL, "
                     "friendList TEXT NOT NULL, "
                     "chatroomList TEXT NOT NULL)";
                 err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
@@ -65,6 +64,10 @@ namespace db {
             status get_friend_request_list(std::string to, std::vector<std::string>& list);
 
             status confirm_friend_request(std::string to, std::string source);
+
+            status get_friend_list(std::string user, std::vector<std::string>& list);
+
+            status write_message(std::string user1, std::string user2, std::string msg);
 
         private:
             sqlite3 *database;

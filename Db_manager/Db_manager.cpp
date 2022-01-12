@@ -1,5 +1,5 @@
 #include "Db_manager.hpp"
-
+#include <unistd.h>
 int db::callback(void *NotUsed, int argc, char **argv, char **azColName) {  // example
     for (int i = 0; i < argc; ++i)
         printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
@@ -46,6 +46,12 @@ std::string db::merge_string(std::vector<std::string> v, std::string delim = ","
     return ret;
 }
 
+// this would sort user1 and user2 !
+std::string db::get_dmname(std::string& user1, std::string& user2) {
+  if (user1 > user2) swap(user1, user2);
+  return "DirectMessage_" + user1 + "_" + user2;
+}
+
 db::status db::Db_manager::sign_up(std::string name, std::string password) {
 
     cmd = "SELECT name FROM UserList WHERE name='";
@@ -55,8 +61,8 @@ db::status db::Db_manager::sign_up(std::string name, std::string password) {
     CHECK;
     if (callback_val > 0)
         return status::USER_EXISTS;
-    cmd = "INSERT INTO UserList (name, password) VALUES ('";
-    cmd += name + "', '" + password + "')";
+    cmd = "INSERT INTO UserList (name, password, friendList, chatroomList) VALUES ('";
+    cmd += name + "', '" + password + "', '','')";
     err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
     CHECK;
     return status::OK;
@@ -82,6 +88,7 @@ db::status db::Db_manager::if_user_exists(std::string name) {
     return status::USER_NOT_EXISTS;
 }
 
+// not yet check if is friend already.
 db::status db::Db_manager::create_friend_request(std::string source, std::string destination) {
     cmd = "INSERT INTO FriendRequest (source, destination) VALUES ('";
     cmd += source + "', '" + destination + "')";
@@ -109,7 +116,7 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
     err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
     CHECK;
 
-    cmd = "SELECT friendList FROM UserInfo WHERE name = '";
+    cmd = "SELECT friendList FROM UserList WHERE name = '";
     cmd += to + "'";
     std::string s;
     err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
@@ -121,7 +128,7 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
     s = merge_string(fl, ",");
     fprintf(stderr, "confirm_friend_request2 : %s\n", s.c_str());
 
-    cmd = "UPDATE UserInfo SET friendList ='";
+    cmd = "UPDATE UserList SET friendList ='";
     cmd += s + "' WHERE name = '" + to + "'";
     fprintf(stderr, "confirm_friend_request3 : %s\n", cmd.c_str());
     err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
@@ -129,7 +136,7 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
 
     /* second time */
 
-    cmd = "SELECT friendList FROM UserInfo WHERE name = '";
+    cmd = "SELECT friendList FROM UserList WHERE name = '";
     cmd += source + "'";
     s = "";
     err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
@@ -139,10 +146,72 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
     fl.push_back(to);
     s = merge_string(fl, ",");
 
-    cmd = "UPDATE UserInfo SET friendList ='";
+    cmd = "UPDATE UserList SET friendList ='";
     cmd += s + "' WHERE name = '" + source + "'";
     err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
     CHECK;
 
+    std::string user1 = min(source, to), user2 = max(source, to);
+    std::string dmname = get_dmname(user1, user2);
+    cmd = "CREATE TABLE IF NOT EXISTS ";
+    cmd += dmname + " (type TEXT NOT NULL, sender TEXT, content TEXT, time integer)";
+    err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+    CHECK;
+
+    time_t t = time(NULL);
+    cmd = "INSERT INTO ";
+    cmd += dmname + " (type, content, time) VALUES ('user', '";
+    cmd += user1 + "', " + std::to_string(t) + ")";
+    err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+    CHECK;
+
+    cmd = "INSERT INTO ";
+    cmd += dmname + " (type, content, time) VALUES ('user', '";
+    cmd += user2 + "', " + std::to_string(t) + ")";
+    err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+    CHECK;
+
     return status::OK;
 }
+
+db::status db::Db_manager::get_friend_list(std::string user, std::vector<std::string>& list) {
+    cmd = "SELECT friendList FROM UserList WHERE name ='";
+    cmd += user + "'";
+    std::string s;
+    err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
+    CHECK;
+    list = db::split_string(s, ",");
+    return status::OK;
+}
+
+db::status db::Db_manager::write_message(std::string user1, std::string user2, std::string msg) {
+  std::string sender = user1;
+  std::string dmname = get_dmname(user1, user2);
+  time_t t = time(NULL);
+  std::string cmd;
+  cmd = "INSERT INTO " + dmname + "(type, sender, content, time) VALUES ('message', '";
+  cmd += sender + "', '" + msg + "', " + std::to_string(t) + ")";
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
+#ifdef dbmain
+
+int main() {
+  db::Db_manager d;
+  d.sign_up("qpoi", "qpoi");
+  d.sign_up("pqoi", "pqoi");
+  d.sign_up("npoi", "npoi");
+
+  d.create_friend_request("qpoi", "pqoi");
+  d.create_friend_request("qpoi", "npoi");
+  d.create_friend_request("pqoi", "npoi");
+
+  d.confirm_friend_request("pqoi", "qpoi");
+  d.confirm_friend_request("npoi", "qpoi");
+
+  d.write_message("qpoi", "pqoi", "hello\n");
+  d.write_message("pqoi", "qpoi", "hello, too\n");
+}
+#endif

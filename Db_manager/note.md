@@ -4,10 +4,7 @@ columnName1, columnName2
 
 
 UserList : 記錄所有的 user
-name, password
-
-UserInfo : 你有哪些朋友，在哪些 chatroom
-name, friendList (string), chatroomList
+name, password, friendList (string), chatroomList
 
 FriendRequest : 記錄交友邀請   // from 是關鍵字= =
 source, destination
@@ -18,8 +15,6 @@ type (user or message or file), from, content, file, time
 
 Chatroom_[X] :
 type (user or message or file), from, content, file, time
-
-
 
 ---
 

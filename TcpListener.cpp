@@ -53,9 +53,7 @@ void TcpListener::_serve(int client_fd, int client_id) {
             break;
         }
         else {
-
-
-            if(on_message_received(client_fd, buf, bytes_in) < 0) {
+            if (on_message_received(client_fd, buf, bytes_in) < 0) {
                 std::cerr << client_fd << " disconnected" << std::endl;
                 // Drop the client
                 on_client_disconnected(client_fd);

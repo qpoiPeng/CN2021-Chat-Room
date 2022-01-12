@@ -1,7 +1,8 @@
 #include<unordered_map>
 #include<vector>
-
-std::vector<std::string> http_split_string(std::string s, std::string delim = " ") {
+#include<sys/socket.h>
+#include "../const.hpp"
+std::vector<std::string> http_split_string(const std::string& s, std::string delim = " ") {
     std::vector<std::string> ret;
     int cur = 0, pos = 0;
     while ((pos = s.find(delim, cur)) != -1) {
@@ -18,7 +19,7 @@ struct HttpRequest {
   std::string method;
   std::string path;
   std::string content;
-  HttpRequest(std::string req) {
+  HttpRequest(const std::string& req) {
     std::vector<std::string> lines = http_split_string(req, "\r\n");
     std::vector<std::string> cur = http_split_string(lines[0]);
     method = cur[0]; path = cur[1];
@@ -31,6 +32,16 @@ struct HttpRequest {
     ++i;
     while (i < lines.size())
       content += lines[i++];
+  }
+  HttpRequest(const std::string& req, int client_fd) : HttpRequest(req) {
+    char buf[BUF_SIZE+1];
+    if (header.find("Content-Length") != header.end()) {
+      while (content.size() < std::stoi(header["Content-Length"])) {
+	memset(buf, 0, BUF_SIZE+1);
+	if (recv(client_fd, buf, BUF_SIZE, 0) <= 0) break;
+	content += buf;
+      }
+    }
   }
   void show() {
     std::cout << method << '\n';

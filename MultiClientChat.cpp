@@ -228,7 +228,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 //   }
 
 // };
-    HttpRequest hr(msg);
+    HttpRequest hr(msg, client_socket);
     hr.show();
     
     // std::cerr << msg;

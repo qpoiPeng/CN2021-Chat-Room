@@ -13,7 +13,7 @@
 namespace db {
 
     constexpr char db_filename[] = "test.db";
-    enum status {OK, FAILED, USER_EXISTS, USER_NOT_EXISTS, DUPLICATED_REQUEST};
+  enum status {OK, FAILED, USER_EXISTS, USER_NOT_EXISTS, DUPLICATED_REQUEST, IS_FRIEND_ALREADY, NOT_FRIEND};
 
     int callback(void *NotUsed, int argc, char **argv, char **azColName);
 
@@ -77,7 +77,11 @@ namespace db {
             status write_message(std::string user1, std::string user2, std::string msg);
 
             status token2name(std::string token, std::string& name);
-        private:
+
+            status create_token(std::string name, std::string& token);
+
+            status delete_friend(std::string user, std::string notfriend);
+    private:
             sqlite3 *database;
             std::string cmd;
             int err;

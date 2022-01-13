@@ -15,4 +15,3 @@ struct HttpResponse {
   void set_content(std::string cntnt);
   std::string dump();
 };
-

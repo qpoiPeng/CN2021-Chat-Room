@@ -37,7 +37,7 @@ void HttpResponse::set_header(std::string key, std::string value) {
 }
 
 void HttpResponse::set_content(std::string cntnt) {
-  header["Content-Length"] = std::to_string(cntnt.size() + 1);
+  header["Content-Length"] = std::to_string(cntnt.size() + 2);
   content = cntnt;
 }
 

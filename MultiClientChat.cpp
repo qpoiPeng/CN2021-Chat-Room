@@ -17,6 +17,18 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     HttpRequest hr(msg, client_socket);
     hr.show();
 
+    if (hr.path == "/register") {
+      db::status res = db_manager.sign_up(hr.j_content["name"], hr.j_content["password"]);
+      if (res == db::status::OK) {
+	std::cout << "register ok\n";
+      }
+      else {
+	std::cout << "register failed\n";
+      }
+    }
+    else if (hr.path == "/login") {
+      
+    }
     if (parsed[0] == "1") { // login
         // int sign_in() {
         // if (send(sig::sign_in) < 0)

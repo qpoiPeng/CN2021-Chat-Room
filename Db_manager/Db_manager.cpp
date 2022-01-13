@@ -26,6 +26,17 @@ int db::get_request_string(void* s, int argc, char **argv, char **colName) {
     return 0;
 }
 
+int db::get_message(void* _chat, int argc, char **argv, char **colName) {
+  std::vector<db::Message> *chat = (std::vector<db::Message> *) _chat;
+  db::Message msg;
+  msg.type = argv[0]? argv[0] : "";
+  msg.from = argv[1]? argv[1] : "";
+  msg.content = argv[2]? argv[2] : "";
+  msg.timestamp = argv[3]? std::stoul(argv[3]) : 0;
+  chat->push_back(msg);
+  return 0;
+}
+
 std::vector<std::string> db::split_string(std::string s, std::string delim) {
     std::vector<std::string> ret;
     int cur = 0, pos = 0;
@@ -266,6 +277,21 @@ db::status db::Db_manager::write_message(std::string user1, std::string user2, s
   return status::OK;
 }
 
+db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::vector<db::Message>& chat) {
+  std::string dmname = get_dmname(user1, user2);
+  cmd = "SELECT * FROM ";
+  cmd += dmname;
+  err = sqlite3_exec(database, cmd.c_str(), get_message, &chat, &errmsg);
+  CHECK;
+  for (int i = 0; i < chat.size(); ++i) {
+    if (chat[i].from == user1)
+      chat[i].to = user2;
+    else if (chat[i].from == user2)
+      chat[i].to = user1;
+  }
+  return status::OK;
+}
+
 #ifdef dbmain
 
 int main() {
@@ -279,6 +305,11 @@ int main() {
 
   d.confirm_friend_request("qpoi", "npoi");
   d.confirm_friend_request("qpoi", "pqoi");
+
+  d.write_message("qpoi", "pqoi", "hello.");
+  d.write_message("pqoi", "qpoi", "hello, too.");
+  d.write_message("qpoi", "pqoi", "I am qpoi.");
+  d.write_message("qpoi", "pqoi", "Nice to meet you.");
 }
 
 #endif

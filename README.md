@@ -8,8 +8,9 @@
 | ------------- | ------------- | --------------- |
 | POST  | `$BASE_URL/register` | User register inforamtion: `{"name": $username, "password": $user_password}` |
 | POST  | `$BASE_URL/login` | User login information: `{"name": $username, "password":$user_password}` |
-| GET  | `$BASE_URL/chat/$username/$friend_name` | Get single chat history |
-| GET | `$BASE_URL/groupchat/$username/$group_name` | Get group chat history |
+| GET  | `$BASE_URL/chat/$friend_name` | Get single chat history |
+| GET | `$BASE_URL/groupchat/$group_name` | Get group chat history |
+| POST | `$BASE_URL/chat/$friend_name` | Message: `{"message" : $message}`|
 | GET | `$BASE_URL/$username/friends` | Get list of friends of username |
 | POST | `$BASE_URL/$username/friends` | Add/delete friends: `{action: add/delete, friend_name: friend_name}` |
 | GET | `$BASE_URL/$username/friends/requests` | Get list of friend requests (in and out) |

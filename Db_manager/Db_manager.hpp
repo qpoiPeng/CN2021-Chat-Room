@@ -12,6 +12,11 @@
 
 namespace db {
 
+  struct Message {
+    std::string type, from, to, content;
+    unsigned int timestamp;
+  };
+
     constexpr char db_filename[] = "test.db";
   enum status {OK, FAILED, USER_EXISTS, USER_NOT_EXISTS, DUPLICATED_REQUEST, IS_FRIEND_ALREADY, NOT_FRIEND};
 
@@ -22,6 +27,8 @@ namespace db {
     int get_request_list(void* list, int argc, char **argv, char **colName);
 
     int get_request_string(void* s, int argc, char **argv, char **colName);
+
+    int get_message(void* msg_list, int argc, char **argv, char **colName);
 
     std::string get_token(std::string name);
 
@@ -76,6 +83,8 @@ namespace db {
 
             status write_message(std::string user1, std::string user2, std::string msg);
 
+            status get_chat(std::string user1, std::string user2, std::vector<Message>& chat);
+
             status token2name(std::string token, std::string& name);
 
             status create_token(std::string name, std::string& token);
@@ -87,5 +96,6 @@ namespace db {
             int err;
             char *errmsg;
     };
+
 }
 

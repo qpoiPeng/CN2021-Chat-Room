@@ -52,6 +52,12 @@ std::string db::get_dmname(std::string& user1, std::string& user2) {
   return "DirectMessage_" + user1 + "_" + user2;
 }
 
+std::string db::get_token(std::string name) {
+  std::hash<std::string> str_hash;
+  name += "THIS IS A SECRET" + std::to_string(std::time(0));
+  return std::to_string(str_hash(name));
+}
+
 db::status db::Db_manager::sign_up(std::string name, std::string password) {
 
     cmd = "SELECT name FROM UserList WHERE name='";
@@ -80,6 +86,17 @@ db::status db::Db_manager::sign_in(std::string name, std::string password) {
 db::status db::Db_manager::if_user_exists(std::string name) {
     cmd = "SELECT name FROM UserList WHERE name='";
     cmd += name + "'";
+    int callback_val = 0;
+    err = sqlite3_exec(database, cmd.c_str(), count_result, (void*) (&callback_val), &errmsg);
+    CHECK;
+    if (callback_val > 0)
+        return status::USER_EXISTS;
+    return status::USER_NOT_EXISTS;
+}
+
+db::status db::Db_manager::token2name(std::string token, std::string& name) {
+    cmd = "SELECT name FROM Token WHERE token='";
+    cmd += token + "'";
     int callback_val = 0;
     err = sqlite3_exec(database, cmd.c_str(), count_result, (void*) (&callback_val), &errmsg);
     CHECK;
@@ -210,6 +227,11 @@ int main() {
 
   d.confirm_friend_request("pqoi", "qpoi");
   d.confirm_friend_request("npoi", "qpoi");
+
+  std::vector<std::string> friends;
+  d.get_friend_list("qpoi", friends);
+  for (auto& f : friends)
+    std::cout << f << '\n';
 
   d.write_message("qpoi", "pqoi", "hello\n");
   d.write_message("pqoi", "qpoi", "hello, too\n");

@@ -34,6 +34,6 @@ HttpRequest::HttpRequest(const std::string& req, int client_fd) : HttpRequest(re
       if (recv(client_fd, buf, BUF_SIZE, 0) <= 0) break;
       content += buf;
     }
+    j_content = nlohmann::json::parse(content);
   }
-  j_content = nlohmann::json::parse(content);
 }

@@ -5,7 +5,7 @@
 #include<cstring>
 #include<vector>
 #include<ctime>
-
+#include<functional>
 #define CHECK if (err) {					\
     std::cerr << sqlite3_errmsg(database) << '\n';		\
 }
@@ -22,6 +22,8 @@ namespace db {
     int get_request_list(void* list, int argc, char **argv, char **colName);
 
     int get_request_string(void* s, int argc, char **argv, char **colName);
+
+    std::string get_token(std::string name);
 
     std::vector<std::string> split_string(std::string s, std::string delim = " ");
 
@@ -47,6 +49,11 @@ namespace db {
                     "UNIQUE(source, destination))";
                 err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
                 CHECK;
+                cmd = "CREATE TABLE IF NOT EXISTS Token ("
+		  "token TEXT PRIMARY KEY, "
+		  "name TEXT NOT NULL) ";
+                err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+                CHECK;
             }
 
             ~Db_manager() {
@@ -69,6 +76,7 @@ namespace db {
 
             status write_message(std::string user1, std::string user2, std::string msg);
 
+            status token2name(std::string token, std::string& name);
         private:
             sqlite3 *database;
             std::string cmd;

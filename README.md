@@ -6,7 +6,7 @@
 
 | Request Type  | URL | Content Description |
 | ------------- | ------------- | --------------- |
-| POST  | `$BASE_URL/register` | User register inforamtion: `{name: $username, email: $user_email, password: $user_password}` |
+| POST  | `$BASE_URL/register` | User register inforamtion: `{"name": $username, "password": $user_password}` |
 | POST  | `$BASE_URL/login` | User login information: `{"name": $username, "password":$user_password}` |
 | GET  | `$BASE_URL/chat/$username/$friend_name` | Get single chat history |
 | GET | `$BASE_URL/groupchat/$username/$group_name` | Get group chat history |

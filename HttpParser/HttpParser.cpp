@@ -21,6 +21,7 @@ HttpRequest::HttpRequest(const std::string& req) {
     if (cur.size() < 1) break;
     header[cur[0]] = cur[1];
   }
+  if (path == "/file") return;
   ++i;
   while (i < lines.size())
     content += lines[i++];

@@ -11,7 +11,7 @@
 | GET  | `$BASE_URL/chat/$friend_name` | Get single chat history |
 | GET | `$BASE_URL/groupchat/$group_name` | Get group chat history |
 | POST | `$BASE_URL/chat/$friend_name` | Message: `{"message" : $message}`|
-| GET | `$BASE_URL/$username/friends` | Get list of friends of username |
+| GET | `$BASE_URL/friends` | Get list of friends of username |
 | POST | `$BASE_URL/$username/friends` | Add/delete friends: `{action: add/delete, friend_name: friend_name}` |
 | GET | `$BASE_URL/$username/friends/requests` | Get list of friend requests (in and out) |
 | POST | `$BASE_URL/$username/friends/requests` | Accept/decline friend_request: `{"action": "accept"/"reject", "friend_name": $friend_name}` |

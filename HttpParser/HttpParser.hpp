@@ -8,8 +8,10 @@
 struct HttpRequest {
   std::unordered_map<std::string, std::string> header;
   std::string method, path, content;
+  int curpos;
   nlohmann::json j_content;
   HttpRequest(const std::string& req);
   HttpRequest(const std::string& req, int client_fd);
+  int download(const char* msg, int client_fd);
   void show();
 };

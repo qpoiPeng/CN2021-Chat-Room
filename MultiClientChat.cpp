@@ -160,7 +160,10 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
   else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {
-    
+    if (hr.download(msg, client_socket) == 0)
+      j["status"] = "Success";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
 
   return 0;

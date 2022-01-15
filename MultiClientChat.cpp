@@ -47,7 +47,17 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
   hr.show();
   HttpResponse resp;
   json j;
-  if (hr.path == "/register") {
+
+  // Handle CORS
+  if(hr.header.find("Sec-Fetch-Mode") != hr.header.end() && hr.header["Sec-Fetch-Mode"] == "cors") {
+    resp.set_header("Access-Control-Allow-Origin", "*");
+    resp.set_header("Access-Control-Allow-Methods", "*");
+    resp.set_header("Access-Control-Allow-Headers", "*");
+  }
+
+  if(hr.method == "OPTIONS")
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  else if (hr.path == "/register") {
     db::status res = db_manager.sign_up(hr.j_content["name"], hr.j_content["password"]);
     if (res == db::status::OK) {
       j["status"] = "Success";

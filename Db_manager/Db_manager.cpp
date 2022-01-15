@@ -9,7 +9,7 @@ int db::callback(void *NotUsed, int argc, char **argv, char **azColName) {  // e
 
 int db::count_result(void* result, int argc, char **argv, char **azColName) {
     int *_result = (int *) result;
-    *_result = argc;
+    *_result += 1;
     return 0;
 }
 
@@ -26,7 +26,18 @@ int db::get_request_string(void* s, int argc, char **argv, char **colName) {
     return 0;
 }
 
-std::vector<std::string> db::split_string(std::string s, std::string delim = " ") {
+int db::get_message(void* _chat, int argc, char **argv, char **colName) {
+  std::vector<db::Message> *chat = (std::vector<db::Message> *) _chat;
+  db::Message msg;
+  msg.type = argv[0]? argv[0] : "";
+  msg.from = argv[1]? argv[1] : "";
+  msg.content = argv[2]? argv[2] : "";
+  msg.timestamp = argv[3]? std::stoul(argv[3]) : 0;
+  chat->push_back(msg);
+  return 0;
+}
+
+std::vector<std::string> db::split_string(std::string s, std::string delim) {
     std::vector<std::string> ret;
     int cur = 0, pos = 0;
     while ((pos = s.find(delim, cur)) != -1) {
@@ -38,7 +49,7 @@ std::vector<std::string> db::split_string(std::string s, std::string delim = " "
     return ret;
 }
 
-std::string db::merge_string(std::vector<std::string> v, std::string delim = ",") {
+std::string db::merge_string(std::vector<std::string> v, std::string delim) {
     std::string ret;
     for (auto s : v)
         ret += s + delim;
@@ -50,6 +61,12 @@ std::string db::merge_string(std::vector<std::string> v, std::string delim = ","
 std::string db::get_dmname(std::string& user1, std::string& user2) {
   if (user1 > user2) swap(user1, user2);
   return "DirectMessage_" + user1 + "_" + user2;
+}
+
+std::string db::get_token(std::string name) {
+  std::hash<std::string> str_hash;
+  name += "THIS IS A SECRET" + std::to_string(std::time(0));
+  return std::to_string(str_hash(name));
 }
 
 db::status db::Db_manager::sign_up(std::string name, std::string password) {
@@ -88,8 +105,39 @@ db::status db::Db_manager::if_user_exists(std::string name) {
     return status::USER_NOT_EXISTS;
 }
 
-// not yet check if is friend already.
+db::status db::Db_manager::token2name(std::string token, std::string& name) {
+    name = "";
+    cmd = "SELECT name FROM Token WHERE token='";
+    cmd += token + "'";
+    err = sqlite3_exec(database, cmd.c_str(), get_request_string, (void*) (&name), &errmsg);
+    CHECK;
+    if (name == "")
+      return status::USER_NOT_EXISTS;
+    return status::OK;
+}
+
+db::status db::Db_manager::create_token(std::string name, std::string& token) {
+  token = db::get_token(name);
+  cmd = "INSERT INTO Token (token, name) VALUES('";
+  cmd += token + "', '" + name + "')";
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
 db::status db::Db_manager::create_friend_request(std::string source, std::string destination) {
+  std::vector<std::string> fl;
+  db::status is_friend = get_friend_list(source, fl);
+  for (auto& f : fl)
+    if (f == destination)
+      return status::IS_FRIEND_ALREADY;
+
+  fl.clear();
+  is_friend = get_friend_request_list(source, fl);
+  for (auto& f : fl)
+    if (f == destination)
+      return status::DUPLICATED_REQUEST;
+    
     cmd = "INSERT INTO FriendRequest (source, destination) VALUES ('";
     cmd += source + "', '" + destination + "')";
     err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
@@ -174,6 +222,39 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
     return status::OK;
 }
 
+db::status db::Db_manager::delete_friend(std::string user, std::string notfriend) {
+  std::vector<std::string> fl;
+  get_friend_list(user, fl);
+  for (int i = 0; i < fl.size(); ++i) {
+    if (fl[i] == notfriend) {
+      fl.erase(fl.begin() + i);
+      std::string s = merge_string(fl, ",");
+      cmd = "UPDATE UserList SET friendList ='";
+      cmd += s + "' WHERE name = '" + user + "'";
+      err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
+      CHECK;
+
+      fl.clear();
+      break;
+    }
+  }
+  get_friend_list(notfriend, fl);
+  for (int i = 0; i < fl.size(); ++i) {
+    if (fl[i] == user) {
+      fl.erase(fl.begin() + i);
+      std::string s = merge_string(fl, ",");
+      cmd = "UPDATE UserList SET friendList ='";
+      cmd += s + "' WHERE name = '" + notfriend + "'";
+      err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
+      CHECK;
+
+      break;
+    }
+  }
+
+  return status::OK;
+}
+
 db::status db::Db_manager::get_friend_list(std::string user, std::vector<std::string>& list) {
     cmd = "SELECT friendList FROM UserList WHERE name ='";
     cmd += user + "'";
@@ -196,6 +277,21 @@ db::status db::Db_manager::write_message(std::string user1, std::string user2, s
   return status::OK;
 }
 
+db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::vector<db::Message>& chat) {
+  std::string dmname = get_dmname(user1, user2);
+  cmd = "SELECT * FROM ";
+  cmd += dmname;
+  err = sqlite3_exec(database, cmd.c_str(), get_message, &chat, &errmsg);
+  CHECK;
+  for (int i = 0; i < chat.size(); ++i) {
+    if (chat[i].from == user1)
+      chat[i].to = user2;
+    else if (chat[i].from == user2)
+      chat[i].to = user1;
+  }
+  return status::OK;
+}
+
 #ifdef dbmain
 
 int main() {
@@ -204,14 +300,16 @@ int main() {
   d.sign_up("pqoi", "pqoi");
   d.sign_up("npoi", "npoi");
 
-  d.create_friend_request("qpoi", "pqoi");
-  d.create_friend_request("qpoi", "npoi");
-  d.create_friend_request("pqoi", "npoi");
+  d.create_friend_request("pqoi", "qpoi");
+  d.create_friend_request("npoi", "qpoi");
 
-  d.confirm_friend_request("pqoi", "qpoi");
-  d.confirm_friend_request("npoi", "qpoi");
+  d.confirm_friend_request("qpoi", "npoi");
+  d.confirm_friend_request("qpoi", "pqoi");
 
-  d.write_message("qpoi", "pqoi", "hello\n");
-  d.write_message("pqoi", "qpoi", "hello, too\n");
+  d.write_message("qpoi", "pqoi", "hello.");
+  d.write_message("pqoi", "qpoi", "hello, too.");
+  d.write_message("qpoi", "pqoi", "I am qpoi.");
+  d.write_message("qpoi", "pqoi", "Nice to meet you.");
 }
+
 #endif

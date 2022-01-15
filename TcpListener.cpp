@@ -36,6 +36,14 @@ int TcpListener::init() {
         return -1;
     }
 
+    DIR* dir = opendir("server_dir");
+    if (dir) {
+      closedir(dir);
+    }
+    else if (errno == ENOENT) {
+      mkdir("server_dir", 0744);
+    }
+    
     return 0;
 }
 

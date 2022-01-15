@@ -6,242 +6,171 @@
 #include <vector>
 #include <streambuf>
 #include <iterator>
-#include "HttpParser/HttpParser.hpp"
+#include "HttpParser/HttpResponse.hpp"
+using json = nlohmann::json;
+
+#define CHECK_LOGIN if (hr.header.find("Cookie") == hr.header.end()) {	\
+    j["status"] = "NOT LOGIN";						\
+    resp.set_content(j.dump());						\
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()); \
+    return 0;								\
+  }								     
+#define CHECK_USER if (user == "") {					\
+    j["status"] = "NOT LOGIN";						\
+    resp.set_content(j.dump());						\
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()); \
+    return 0;								\
+  }
+
+bool timecmp(db::Message& a, db::Message& b) {
+  return a.timestamp < b.timestamp;
+}
+
+std::string MultiClientChat::get_user(HttpRequest& hr) {
+  int pos = hr.header["Cookie"].find("id=");
+  std::string user;
+  if (pos != -1) {
+    int endpos = hr.header["Cookie"].find(";", pos+1);
+    endpos = endpos == -1? INT_MAX : endpos;
+    std::string token = hr.header["Cookie"].substr(pos+3, endpos-pos);
+    db_manager.token2name(token, user);
+  }
+  return user;
+}
 
 // Handler for when a message is received from the client
 int MultiClientChat::on_message_received(int client_socket, const char *msg, int length) {
 
-    // Parse out the request (gives all strings separated by spaces)
-    std::istringstream iss(msg);
-    std::vector<std::string> parsed((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
-
-    if (parsed[0] == "1") { // login
-        // int sign_in() {
-        // if (send(sig::sign_in) < 0)
-        //     return -1;
-        // char buf[BUF_SIZE+1] = {};
-        // std::string username, password;
-
-        // if (recv(buf) <= 0)
-        //     return -1;
-        // username = buf;
-
-        // memset(buf, 0, BUF_SIZE+1);
-        // if (recv(buf) <= 0)
-        //     return -1;
-        // password = buf;
-
-        // db::status res = server.db_manager.sign_in(username, password);
-        // if (res == db::status::OK) {
-        //     if (send(sig::sign_in_success) < 0)
-        //     return -1;
-        //     this->name = username;
-        //     return 0;
-        // }
-        // // else
-        // if (send(sig::sign_in_fail) < 0)
-        //     return -1;
-        // return 1;
-        // }
-    }
-    else if (parsed[0] == "2") { // signup
-        // std::string username, password;
-
-        // char buf[BUF_SIZE+1] = {};
-        // if (send(sig::sign_up) < 0)
-        //     return -1;
-
-        // if (recv(buf) <= 0)
-        //     return -1;
-        // username = buf;
-
-        // memset(buf, 0, BUF_SIZE+1);
-        // if (recv(buf) <= 0)
-        //     return -1;
-        // password = buf;
-
-        // memset(buf, 0, BUF_SIZE+1);
-        // if (recv(buf) <= 0)
-        //     return -1;
-        // password2 = buf;
-
-        // if (password != password2) {
-        // constexpr char password_prompt2[] = "password error.\n";
-        // if (send(password_prompt2) < 0)
-        //     return -1;
-        // }
-        // else {
-        //     server.db_mtx.lock();
-        //     db::status res = server.db_manager.sign_up(username, password);
-        //     server.db_mtx.unlock();
-        // if (res == db::status::OK) {
-
-        //     constexpr char success[] = "Create account successfully!\n";
-
-        //     if (send(success) < 0)
-        //         return -1;
-        // }
-        // else {
-        //     constexpr char failed[] = "The username is used. Please try again.\n";
-        //     if (send(failed) < 0)
-        //         return -1;
-        // }
-
-    }
-    else if (parsed[0] == "3") { // quit
-
+  HttpRequest hr(msg, client_socket);
+  hr.show();
+  HttpResponse resp;
+  json j;
+  if (hr.path == "/register") {
+    db::status res = db_manager.sign_up(hr.j_content["name"], hr.j_content["password"]);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
     }
     else {
-
+      j["status"] = "Username exists";
     }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()+1);
+  }
+  else if (hr.path == "/login") {
+    db::status res = db_manager.sign_in(hr.j_content["name"], hr.j_content["password"]);
+    if (res == db::status::OK) {
+      std::string name = hr.j_content["name"], token;
+      db_manager.create_token(name, token);
+      token = "id=" + token + ";";
+      resp.set_header("Set-Cookie", token);
+      j["status"] = "Success";
+    }
+    else {
+      j["status"] = "Failed";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path == "/friends" && hr.method == "GET") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    if (user == "") {
+      resp.set_content(j.dump());
+      send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+      return 0;
+    }
+    std::vector<std::string> friends;
+    db::status res = db_manager.get_friend_list(user, friends);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+      j["friends"] = friends;
+    }
+    else {
+      j["status"] = "Failed";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path == "/friends" && hr.method == "POST") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    if (hr.j_content["action"] == "add") {
+      db::status res = db_manager.create_friend_request(user, hr.j_content["friend_name"]);
+      if (res == db::status::OK) {
+	j["status"] = "Success";
+      }
+      else if (res == db::status::DUPLICATED_REQUEST) {
+	j["status"] = "Duplicated request";
+      }
+      else if (res == db::status::IS_FRIEND_ALREADY) {
+	j["status"] = "Is friend already";
+      }
+    }
+    else if (hr.j_content["action"] == "delete") {
+      db::status res = db_manager.delete_friend(user, hr.j_content["friend_name"]);
+      if (res == db::status::OK) {
+	j["status"] = "Success";
+      }
+      else {
+	j["status"] = "Failed";
+      }
+    }
+    else {
+      j["status"] = "??";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path.substr(0, 5) == "/chat" && hr.method == "GET") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr), frd = hr.path.substr(6);
+    CHECK_USER;
+    std::vector<db::Message> chat;
+    db::status res = db_manager.get_chat(user, frd, chat);
+    if (res == db::status::OK) {
+      sort(chat.begin(), chat.end(), timecmp);
+      for (int i = 0; i < chat.size(); ++i) {
+	if (chat[i].type == "user") continue;
+	json tmp;
+	tmp["type"] = chat[i].type;
+	tmp["timestamp"] = chat[i].timestamp;
+	tmp["from"] = chat[i].from;
+	tmp["to"] = chat[i].to;
+	tmp["content"] = chat[i].content;
+	j["messages"].push_back(tmp);
+      }
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path.substr(0, 5) == "/chat" && hr.method == "POST") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr), frd = hr.path.substr(6);
+    CHECK_USER;
+    db::status res = db_manager.write_message(user, frd, hr.j_content["message"]);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+    }
+    else {
+      j["status"] = "Failed";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {
+    if (hr.download(msg, client_socket) == 0)
+      j["status"] = "Success";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
 
-    // while (true) {
-
-    //     if (s == "1") { // login
-    //         int res = client->sign_in();
-
-    //         if (res < 0)  // disconnect
-    //             break;
-    //         else if (res == 0) {  // success
-    //             client->home();
-    //             break;
-    //         }
-    //         // fail and try again.
-    //     }
-    //     else if (s == "2") {  // register
-    //     if (client->sign_up() < 0)
-    //     break;
-    //     }
-    //     else if (s == "3") {  // quit
-    //     if (client->send(sig::quit) < 0)
-    //         goto THREAD_END;
-    //     break;
-    //     }
-    //     else {  // wrong input
-    //     if (client->send(wrong_format) < 0)
-    //         goto THREAD_END;
-    //     }
-    // }
-    //   void home() {
-//     char buf[BUF_SIZE+1] = {};
-//     std::string s;
-
-//     while (true) {
-//       if (recv(buf) <= 0)
-// 	      break;
-//       s = buf;
-//       if (s == "1") {  // list friend
-//         std::cerr << "List friend" << std::endl;
-//         send(sig::ok);
-//       }
-//       else if (s == "2") {  // send request
-//         std::cerr << "Send request" << std::endl;
-//         send(sig::ok);
-//         // if (friend_request() < 0)
-//           // break;
-//       }
-//       else if (s == "3") {  // confirm request
-//         std::cerr << "Confirm request" << std::endl;
-//         send(sig::ok);
-//       }
-//       else if (s == "4") {  // delete friend
-//         std::cerr << "Delete friend" << std::endl;
-//         send(sig::ok);
-//       }
-//       else if (s == "5") {  // direct message
-//         std::cerr << "Direct message" << std::endl;
-//         send(sig::ok);
-//       }
-//       else if (s == "6") {  // quit
-//         std::cerr << "Quit" << std::endl;
-//         send(sig::quit);
-//         break;
-//       }
-//       else {
-// 	      if (send(wrong_format) < 0)
-// 	      break;
-//       }
-//     }
-//   }
-
-//   int friend_request() {
-//     if (send(sig::create_friend_request) < 0)
-//       return -1;
-//     char buf[BUF_SIZE+1] = {};
-//     std::string destination;
-//     if (recv(buf) <= 0)
-//       return -1;
-//     destination = buf;
-//     if (destination == name) {
-//       if (send(sig::request_self) < 0)
-// 	return -1;
-//     }
-//     else if (server.db_manager.if_user_exists(destination) == db::status::USER_NOT_EXISTS) {
-//       if (send(sig::user_not_exists) < 0)
-// 	return -1;
-//     }
-//     else {
-//       if (server.db_manager.create_friend_request(name, destination) == db::status::DUPLICATED_REQUEST) {
-// 	if (send(sig::duplicated_request) < 0)
-// 	  return -1;
-//       }
-//       if (send(sig::ok) < 0)
-// 	return -1;
-//     }
-//     return 0;
-//   }
-
-//   int confirm_friend_request() {
-//     if (send(sig::confirm_friend_request) < 0)
-//       return -1;
-//     std::vector<std::string> request_list;
-//     server.db_manager.get_friend_request_list(name, request_list);    // no check yet!
-//     sort(request_list.begin(), request_list.end());
-//     int size = request_list.size();
-//     std::string s;
-//     char buf[BUF_SIZE+1] = {};
-//     sprintf(buf, "%d", size);
-//     send(buf);
-//     for (int i = 0; i < size; ++i) {
-//       sprintf(buf, "%s", request_list[i].c_str());
-//       send(buf);
-//     }
-//     int idx = 0;
-//     if (size > 0) {
-//       memset(buf, 0, BUF_SIZE+1);
-//       recv(buf);
-//       try {
-// 	s = buf;
-// 	idx = stoi(s);
-//       }
-//       catch (std::exception e) {
-// 	      send(sig::wrong_format);
-// 	      return 0;
-//       }
-//     }
-//     if (idx > size || idx < -size) {
-//       send(sig::wrong_format);
-//       return 0;
-//     }
-
-//     return 0;
-//   }
-
-// };
-    HttpRequest hr(msg, client_socket);
-    hr.show();
-    db_manager.sign_up("123", "123");
-    // std::cerr << msg;
-
-    return 0;
+  return 0;
 }
 
 // Handler for client connections
 int MultiClientChat::on_client_connected(int client_socket) {
-
-    constexpr char welcome[] = "(1) Login (2) Register (3) Quit\n";
-    send_to_client(client_socket, welcome, strlen(welcome) + 1);
-
     return 0;
 }
 

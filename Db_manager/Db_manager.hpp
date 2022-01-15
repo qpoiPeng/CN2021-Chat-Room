@@ -5,15 +5,20 @@
 #include<cstring>
 #include<vector>
 #include<ctime>
-
+#include<functional>
 #define CHECK if (err) {					\
     std::cerr << sqlite3_errmsg(database) << '\n';		\
 }
 
 namespace db {
 
+  struct Message {
+    std::string type, from, to, content;
+    unsigned int timestamp;
+  };
+
     constexpr char db_filename[] = "test.db";
-    enum status {OK, FAILED, USER_EXISTS, USER_NOT_EXISTS, DUPLICATED_REQUEST};
+  enum status {OK, FAILED, USER_EXISTS, USER_NOT_EXISTS, DUPLICATED_REQUEST, IS_FRIEND_ALREADY, NOT_FRIEND};
 
     int callback(void *NotUsed, int argc, char **argv, char **azColName);
 
@@ -23,9 +28,13 @@ namespace db {
 
     int get_request_string(void* s, int argc, char **argv, char **colName);
 
-    std::vector<std::string> split_string(std::string s, std::string delim);
+    int get_message(void* msg_list, int argc, char **argv, char **colName);
 
-    std::string merge_string(std::vector<std::string> v, std::string delim);
+    std::string get_token(std::string name);
+
+    std::vector<std::string> split_string(std::string s, std::string delim = " ");
+
+    std::string merge_string(std::vector<std::string> v, std::string delim = ",");
 
     std::string get_dmname(std::string& user1, std::string& user2); // this will sort user1 and user2 !
 
@@ -45,6 +54,11 @@ namespace db {
                     "source TEXT NOT NULL, "
                     "destination TEXT NOT NULL, "
                     "UNIQUE(source, destination))";
+                err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+                CHECK;
+                cmd = "CREATE TABLE IF NOT EXISTS Token ("
+		  "token TEXT PRIMARY KEY, "
+		  "name TEXT NOT NULL) ";
                 err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
                 CHECK;
             }
@@ -69,11 +83,19 @@ namespace db {
 
             status write_message(std::string user1, std::string user2, std::string msg);
 
-        private:
+            status get_chat(std::string user1, std::string user2, std::vector<Message>& chat);
+
+            status token2name(std::string token, std::string& name);
+
+            status create_token(std::string name, std::string& token);
+
+            status delete_friend(std::string user, std::string notfriend);
+    private:
             sqlite3 *database;
             std::string cmd;
             int err;
             char *errmsg;
     };
+
 }
 

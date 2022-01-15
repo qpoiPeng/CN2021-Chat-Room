@@ -2,7 +2,8 @@
 
 #include "Db_manager/Db_manager.hpp"
 #include "TcpListener.hpp"
-
+#include<nlohmann/json.hpp>
+#include "HttpParser/HttpParser.hpp"
 class MultiClientChat : public TcpListener {
     public:
         MultiClientChat(const char* ip_address, int port) :
@@ -21,5 +22,5 @@ class MultiClientChat : public TcpListener {
     private:
         std::mutex db_mutex;
         db::Db_manager db_manager;
-
+        std::string get_user(HttpRequest& hr);
 };

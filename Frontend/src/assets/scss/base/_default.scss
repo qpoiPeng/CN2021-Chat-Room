@@ -115,7 +115,7 @@ h3 {
 .anim-appear {
     opacity: 0;
 }
- 
+
 .anim-appear.anim-appear-active{
     opacity: 1;
     @include transition(opacity .8s ease-in);

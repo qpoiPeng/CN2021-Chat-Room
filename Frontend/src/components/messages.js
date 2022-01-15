@@ -6,33 +6,17 @@ class Messages extends Component {
             <div className="messages">
                 <div id="list">
                     <ul>
-                        {this.props.messages.filter(message => message.room === this.props.room).map((message, index) => (
+                        {this.props.messages.filter(message => message.from === this.props.friend || message.to === this.props.friend).map((message, index) => (
                             <li key={index}>
-
-                                {message.url &&
-                                    <div>
-                                        <div className="msg">
-                                            <h4>{message.from}</h4>
-                                            <div className="body">
-                                                <a href={message.url} rel="noopener noreferrer" target="_blank">My current location</a>
-                                            </div>
+                                <div className='msgWrapper'>
+                                    <div className={message.to === this.props.friend ? "msg align-right" : "msg"}>
+                                        <h4>{message.from}</h4>
+                                        <div className="body">
+                                            <p>{message.text}</p>
                                         </div>
-                                        <span className="createdDate">{message.createdDate}</span>
                                     </div>
-                                }
-
-                                {!message.url &&
-                                    <div>
-                                        <div className="msg">
-                                            <h4>{message.from}</h4>
-                                            <div className="body">
-                                                <p>{message.text}</p>
-                                            </div>
-                                        </div>
-                                        <span className="createdDate">{message.createdDate}</span>
-                                    </div>
-                                }
-
+                                    <span className={message.to === this.props.friend ? "createdDate text-right" : "createdDate"}>{message.createdDate}</span>
+                                </div>
                             </li>
                         ))}
                     </ul>

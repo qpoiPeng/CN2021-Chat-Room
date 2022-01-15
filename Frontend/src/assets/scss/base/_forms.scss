@@ -9,10 +9,10 @@ input, select, textarea, button {
 
 input, select, textarea {
     outline: none;
-    border: 1px solid #979797; 
+    border: 1px solid #979797;
 }
 
-input[type=text], input[type=password], input[type=submit], input[type=button], select, textarea, button {
+input[type=text], input[type=password], input[type=submit], input[type=button], select, textarea {
     border-radius: 0;
     -webkit-appearance: none;
     appearance: none;
@@ -53,13 +53,13 @@ input:hover, select:hover, textarea:hover {
     padding: 0 10px;
 
     .form_row {
-        margin-bottom: 2rem; 
+        margin-bottom: 2rem;
 
         .form_item {
 
             .form_label {
                 padding-bottom: 1rem;
-            
+
                 label {
                     font-size: 1.5rem;
                     font-weight: 400;
@@ -94,7 +94,7 @@ input:hover, select:hover, textarea:hover {
                     }
                 }
 
-                .bottom_border {                
+                .bottom_border {
                     width: 0; height: 0;
 
                     &::before {
@@ -118,7 +118,7 @@ input:hover, select:hover, textarea:hover {
                         z-index: 2;
                         pointer-events: none;
                         @include transition(all .4s ease-in-out);
-                        
+
                     }
 
                 }
@@ -250,7 +250,7 @@ input:hover, select:hover, textarea:hover {
 }
 ::-webkit-input-placeholder {
     color: #999;
-}    
+}
 
 // Removing input background colour for Chrome autocomplete
 input:-webkit-autofill {

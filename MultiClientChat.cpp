@@ -6,7 +6,9 @@
 #include <vector>
 #include <streambuf>
 #include <iterator>
+#include <climits>
 #include "HttpParser/HttpResponse.hpp"
+
 using json = nlohmann::json;
 
 #define CHECK_LOGIN if (hr.header.find("Cookie") == hr.header.end()) {	\
@@ -14,7 +16,7 @@ using json = nlohmann::json;
     resp.set_content(j.dump());						\
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()); \
     return 0;								\
-  }								     
+  }
 #define CHECK_USER if (user == "") {					\
     j["status"] = "NOT LOGIN";						\
     resp.set_content(j.dump());						\

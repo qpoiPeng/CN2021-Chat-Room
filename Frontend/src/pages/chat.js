@@ -1,32 +1,31 @@
 import React, { Component } from 'react';
 import { withRouter, Link } from 'react-router-dom';
-// import io from 'socket.io-client';
-import ActiveUsers from './../components/activeUsers';
+import ActiveUsers from '../components/ActiveUsers';
 import Messages from './../components/messages';
-// import moment from 'moment';
-import LoadingScreen from 'react-loading-screen';
+import moment from 'moment';
+// import LoadingScreen from 'react-loading-screen';
 import axios from 'axios';
 
 
-// var socket = raw.createSocket ({protocol: raw.Protocol.None});
-
 const initialState = {
-    users: [],
-    messages: [],
+    user: 'terrance',
+    friend: 'james',
+    messages: [{from: "terrance", to: "james", text: "Hello there, James", createdDate: "4:36am"}, {from: "james", to: "terrance", text: "Hello there, Terrance", createdDate: "5.32pm"}],
+    users: ['qpoi', 'willy', 'LYP', 'james'],
+    friends: ['qpoi', 'willy'],
     newMsg: '',
-    fetchingLocation: false
 }
 
-const postUserJoin = async (params) => {
-    const response = await axios.post("http://localhost:8081/api/join", params);
-    console.log(response.data);
-}
-
+// const postUserJoin = async (params) => {
+//     const response = await axios.post("http://localhost:8081/api/join", params);
+//     console.log(response.data);
+// }
 
 class Chat extends Component {
 
     constructor(props) {
         super(props);
+
         this.state = {
             ...initialState
         }
@@ -37,27 +36,27 @@ class Chat extends Component {
             room: this.props.match.params.room
         }
         // socket.emit('leave', param);
+        // * Post user leave request
         this.setState({...initialState});
     }
 
     componentDidMount() {
 
-        const scopeThis = this;
         const params = {
-            name: this.props.match.params.name,
-            room: this.props.match.params.room
+            name: this.props.match.params.name
         }
 
-        console.log("Mounted");
+        // this.refetchMessage();
 
-        postUserJoin(params);
+        // * Post user log in request
+        // postUserJoin(params);
 
+        // * Get user friend list
         // socket.emit('join', params, function (err) {
         //     if (err) {
         //         this.props.history.push('/');
         //     }
         // });
-
 
         // socket.on('updateUserList', function (users) {
         //     scopeThis.setState({
@@ -83,22 +82,6 @@ class Chat extends Component {
         //     if (msgArr.length > 3) {
         //         scopeThis.scrollToBottom();
         //     }
-        // });
-
-        // socket.on('createLocationMsg', (message) => {
-        //     var formattedTime = moment(message.createdDate).format('h:mm a');
-        //     let newMsg = {
-        //         url: message.url,
-        //         from: message.from,
-        //         room: message.room,
-        //         createdDate: formattedTime
-        //     }
-        //     let results = scopeThis.state.messages;
-        //     results.push(newMsg);
-        //     scopeThis.setState({
-        //         messages: results,
-        //         fetchingLocation: false
-        //     });
         // });
 
         // socket.on('disconnect', function () {
@@ -140,30 +123,45 @@ class Chat extends Component {
         });
     }
 
+    refetchMessage() {
+
+        var message;
+
+
+        var formattedTime = moment(message.createdDate).format('h:mm a');
+        let newMsg = {
+            text: message.text,
+            from: message.from,
+            room: message.room,
+            createdDate: formattedTime
+        }
+
+        let results = this.state.messages;
+
+        results.push(newMsg);
+
+        this.setState({
+            messages: results
+        });
+
+        var msgArr = this.state.messages.filter(message => message.room === this.props.match.params.room);
+        if (msgArr.length > 3) {
+            this.scrollToBottom();
+        }
+    }
+
     newMessage(e) {
         e.preventDefault()
         var obj = {
-            'text': this.state.newMsg
+            'text': this.state.newMsg,
+            'from': this.state.user,
+            'to': this.state.friend
         };
+        // * Post create new message request
+        // * Get new messages from server
+
         // socket.emit('createMessage', obj, function (data) { });
         this.clearForm();
-    }
-
-    sendLocation() {
-        this.setState({
-            fetchingLocation: true
-        });
-        if (!navigator.geolocation) {
-            return alert('GeoLocation not supported by your browser');
-        }
-        navigator.geolocation.getCurrentPosition((pos) => {
-            // socket.emit('createLocationMsg', {
-            //     lat: pos.coords.latitude,
-            //     lon: pos.coords.longitude
-            // });
-        }, () => {
-            alert('Unable to fetch location');
-        });
     }
 
     render() {
@@ -173,33 +171,21 @@ class Chat extends Component {
         return (
             <div className="chatPage">
 
-                <LoadingScreen
-                    loading={this.state.fetchingLocation}
-                    bgColor='#F5F7F4'
-                    spinnerColor='#3597DE'
-                    textColor='#010000'
-                    text='Fetching your current location'
-                >
-                    <div className="hide"></div>
-                </LoadingScreen>
-
-                <ActiveUsers users={this.state.users} />
+                <ActiveUsers users={this.state.users} friends={this.state.friends}/>
 
                 <div className="messages_wrap">
-
                     <h1>
                         <Link to="/">
                             <i className="fas fa-chevron-circle-left"></i>
                         </Link>
-                        {this.props.match.params.room}
+                        {this.state.friend}
                     </h1>
 
-                    <Messages messages={this.state.messages} room={this.props.match.params.room} />
+                    <Messages messages={this.state.messages} friend={this.state.friend} />
 
                     <div className="newMsgForm">
                         <div className="wrap">
                             <form onSubmit={(e) => this.newMessage(e)}>
-
                                 <div className="form_wrap">
                                     <div className="form_row">
                                         <div className="form_item">
@@ -213,9 +199,6 @@ class Chat extends Component {
                                 <div className="btnWrap">
                                     <button type="submit" className="btn">
                                         <i className="fab fa-telegram-plane"></i>
-                                    </button>
-                                    <button id="send_location" className="btn" onClick={() => this.sendLocation()}>
-                                        <i className="far fa-compass"></i>
                                     </button>
                                 </div>
                             </form>

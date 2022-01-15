@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import './assets/scss/styles.scss';
 
 import Chat from './pages/chat';
-import Join from './pages/join';
+import Home from './pages/home'
 
 class App extends Component {
 
@@ -26,8 +26,8 @@ class App extends Component {
       <div className={classNames({'App': true, 'site_loaded': this.state.site_loaded})}>
         <Router>
           <Switch>
-            <Route path="/chat/:name/:room" component={Chat} />
-            <Route path="/" component={Join} />
+            <Route path="/chat/:name" component={Chat} />
+            <Route path="/" component={Home} />
           </Switch>
         </Router>
       </div>

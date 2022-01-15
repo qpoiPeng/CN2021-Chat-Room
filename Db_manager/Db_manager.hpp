@@ -90,6 +90,8 @@ namespace db {
             status create_token(std::string name, std::string& token);
 
             status delete_friend(std::string user, std::string notfriend);
+
+            status get_all_user(std::vector<std::string>& list);
     private:
             sqlite3 *database;
             std::string cmd;

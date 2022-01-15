@@ -1,6 +1,11 @@
 import React, { Component } from 'react';
 
 class ActiveUsers extends Component {
+
+    // constructor(props) {
+    //     super(props);
+    // };
+
     render() {
         return (
             <div className="activeUsers">
@@ -15,8 +20,16 @@ class ActiveUsers extends Component {
                                 <span>
                                     {user}
                                 </span>
-                                <button className='ml-auto px-4 py-2 rounded-lg bg-green-400 text-white'>Accept</button>
-                                <button className='mx-4 px-4 py-2 rounded-lg bg-orange-400 text-white'>Reject</button>
+
+                                {this.props.friends.includes(user) ?
+                                        <button className='ml-auto px-4 py-2 rounded-lg bg-pink-400 text-white' onClick={() => this.props.chatWith(user)}>Chat</button>
+                                    : this.props.requests.includes(user) ?
+                                    <>
+                                        <button className='ml-auto px-4 py-2 rounded-lg bg-green-400 text-white'>Accept</button>
+                                        <button className='ml-4 px-4 py-2 rounded-lg bg-orange-400 text-white'>Reject</button>
+                                    </>
+                                    : <button className='ml-auto px-4 py-2 rounded-lg bg-blue-400 text-white'>Send Request</button>
+                                }
                             </li>
                         ))}
                     </ul>

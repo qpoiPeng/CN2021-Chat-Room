@@ -37,9 +37,10 @@ class Login extends Component {
         if (name && password) {
 
             const payload = { name: name, password: password };
-            axios.post(`${Constants.BASEURL}/login`, payload)
+            axios.post(`${Constants.BASEURL}/login`, payload, {withCredentials: true})
                 .then(response => {
-                    console.log(response.data);
+                    // console.log(response);
+
                     if(response.data.status === "Success") {
                         this.props.history.push(`/chat/${name}`, {name: name});
                     }

@@ -5,7 +5,7 @@ import Messages from './../components/messages';
 import moment from 'moment';
 // import LoadingScreen from 'react-loading-screen';
 import axios from 'axios';
-
+import * as Constants from '../constants';
 
 const initialState = {
     user: 'terrance',
@@ -13,6 +13,7 @@ const initialState = {
     messages: [{from: "terrance", to: "james", text: "Hello there, James", createdDate: "4:36am"}, {from: "james", to: "terrance", text: "Hello there, Terrance", createdDate: "5.32pm"}],
     users: ['qpoi', 'willy', 'LYP', 'james'],
     friends: ['qpoi', 'willy'],
+    requests: [],
     newMsg: '',
 }
 
@@ -29,6 +30,9 @@ class Chat extends Component {
         this.state = {
             ...initialState
         }
+
+        this.chatWith = this.chatWith.bind(this);
+        this.refetchMessage = this.refetchMessage.bind(this);
     }
 
     componentWillUnmount(){
@@ -49,20 +53,33 @@ class Chat extends Component {
         // this.refetchMessage();
 
         // * Post user log in request
-        // postUserJoin(params);
+        axios.get(`${Constants.BASEURL}/api/users`)
+            .then(response => {
+                // console.log(response.data.userlist);
+                this.setState({users: response.data.userlist});
+            });
 
         // * Get user friend list
-        // socket.emit('join', params, function (err) {
-        //     if (err) {
-        //         this.props.history.push('/');
-        //     }
-        // });
+        axios.get(`${Constants.BASEURL}/friends`, {withCredentials: true})
+            .then(response => {
+                // console.log(response.data.friends);
+                if(response.data.status === "Success") {
+                    this.setState({friends: response.data.friends});
+                }
+                else
+                    console.log("GET /friends failed");
+            });
 
-        // socket.on('updateUserList', function (users) {
-        //     scopeThis.setState({
-        //         users
-        //     });
-        // });
+        // * Get friend requests
+        axios.get(`${Constants.BASEURL}/friends/requests`, {withCredentials: true})
+            .then(response => {
+                // console.log(response);
+                if(response.data.status === "Success") {
+                    this.setState({requests: response.data['request list']});
+                }
+                else
+                    console.log("GET /friends/requests failed");
+            });
 
         // socket.on('newMessage', (message) => {
         //     var formattedTime = moment(message.createdDate).format('h:mm a');
@@ -82,10 +99,6 @@ class Chat extends Component {
         //     if (msgArr.length > 3) {
         //         scopeThis.scrollToBottom();
         //     }
-        // });
-
-        // socket.on('disconnect', function () {
-        //     console.log('Connection lost from server.');
         // });
 
     }
@@ -123,31 +136,43 @@ class Chat extends Component {
         });
     }
 
-    refetchMessage() {
+    refetchMessage(friend) {
 
-        var message;
+        var messages;
 
+        // * Get chat history
+        axios.get(`${Constants.BASEURL}/chat/${friend}`, {withCredentials: true})
+            .then(response => {
+                // console.log(response);
+                if(response.data.status === "Success") {
+                    messages = response.data.messages;
+                    if (messages.length > 3) {
+                        this.scrollToBottom();
+                    }
+                    this.setState({messages: response.data.messages});
+                }
+                else
+                    console.log("GET chat history failed failed");
+            });
 
-        var formattedTime = moment(message.createdDate).format('h:mm a');
-        let newMsg = {
-            text: message.text,
-            from: message.from,
-            room: message.room,
-            createdDate: formattedTime
-        }
+        // var formattedTime = moment(message.createdDate).format('h:mm a');
+        // let newMsg = {
+        //     text: message.text,
+        //     from: message.from,
+        //     room: message.room,
+        //     createdDate: formattedTime
+        // }
 
-        let results = this.state.messages;
+        // let results = this.state.messages;
 
-        results.push(newMsg);
+        // results.push(newMsg);
 
-        this.setState({
-            messages: results
-        });
+        // this.setState({
+        //     messages: results
+        // });
 
-        var msgArr = this.state.messages.filter(message => message.room === this.props.match.params.room);
-        if (msgArr.length > 3) {
-            this.scrollToBottom();
-        }
+        // var msgArr = this.state.messages.filter(message => message.room === this.props.match.params.room);
+
     }
 
     newMessage(e) {
@@ -164,6 +189,11 @@ class Chat extends Component {
         this.clearForm();
     }
 
+    chatWith(friend) {
+        console.log(`Chat with ${friend}`);
+        this.setState({ friend: friend }, () => this.refetchMessage(this.state.friend));
+    }
+
     render() {
 
         const { newMsg } = this.state;
@@ -171,7 +201,7 @@ class Chat extends Component {
         return (
             <div className="chatPage">
 
-                <ActiveUsers users={this.state.users} friends={this.state.friends}/>
+                <ActiveUsers users={this.state.users} friends={this.state.friends} requests={this.state.requests} chatWith={this.chatWith} refetchMessage={this.refetchMessage}/>
 
                 <div className="messages_wrap">
                     <h1>
@@ -181,7 +211,7 @@ class Chat extends Component {
                         {this.state.friend}
                     </h1>
 
-                    <Messages messages={this.state.messages} friend={this.state.friend} />
+                    <Messages messages={this.state.messages} friend={this.state.friend} requests={this.state.requests}/>
 
                     <div className="newMsgForm">
                         <div className="wrap">

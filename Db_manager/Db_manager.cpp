@@ -292,6 +292,13 @@ db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::v
   return status::OK;
 }
 
+db::status db::Db_manager::get_all_user(std::vector<std::string>& list) {
+  cmd = "SELECT name FROM UserList ORDER BY name";
+  err = sqlite3_exec(database, cmd.c_str(), get_request_list, &list, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
 #ifdef dbmain
 
 int main() {
@@ -310,6 +317,10 @@ int main() {
   d.write_message("pqoi", "qpoi", "hello, too.");
   d.write_message("qpoi", "pqoi", "I am qpoi.");
   d.write_message("qpoi", "pqoi", "Nice to meet you.");
+  std::vector<std::string> l;
+  d.get_all_user(l);
+  for (auto& s : l)
+    std::cout << s << '\n';
 }
 
 #endif

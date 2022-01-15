@@ -174,10 +174,23 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
   else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {
     if (hr.download(msg, client_socket) == 0)
       j["status"] = "Success";
+    else
+      j["status"] = "Failed";
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
-
+  else if (hr.path == "/api/users" && hr.method == "GET") {
+    std::vector<std::string> userlist;
+    db::status res = db_manager.get_all_user(userlist);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+      j["userlist"] = userlist;
+    }
+    else
+      j["status"] = "Failed";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
   return 0;
 }
 

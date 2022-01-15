@@ -116,6 +116,18 @@ db::status db::Db_manager::token2name(std::string token, std::string& name) {
     return status::OK;
 }
 
+db::status db::Db_manager::filetoken2name(std::string filetoken, std::string& name) {
+    name = "";
+    cmd = "SELECT name FROM FileMap WHERE token='";
+    cmd += filetoken + "'";
+    err = sqlite3_exec(database, cmd.c_str(), get_request_string, (void*) (&name), &errmsg);
+    CHECK;
+    if (name == "")
+      return status::USER_NOT_EXISTS;
+    return status::OK;
+}
+
+
 db::status db::Db_manager::create_token(std::string name, std::string& token) {
   token = db::get_token(name);
   cmd = "INSERT INTO Token (token, name) VALUES('";

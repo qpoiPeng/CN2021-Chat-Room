@@ -98,6 +98,8 @@ namespace db {
 
             status token2name(std::string token, std::string& name);
 
+            status filetoken2name(std::string filetoken, std::string& name);
+
             status create_token(std::string name, std::string& token);
 
             status delete_friend(std::string user, std::string notfriend);

@@ -7,6 +7,7 @@
 #include <streambuf>
 #include <iterator>
 #include <climits>
+#include <sys/stat.h>
 #include "HttpParser/HttpResponse.hpp"
 
 using json = nlohmann::json;
@@ -226,6 +227,54 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
       }
       else
 	j["status"] = "Failed";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path.substr(0, 6) == "/file/" && hr.method == "GET") {   // "/file/$fileid
+    //    CHECK_LOGIN;
+    //    std::string user = get_user(hr);
+    std::string filetoken = hr.path.substr(6), filename;
+    db_manager.filetoken2name(filetoken, filename);
+    std::string filepath = "server_dir/" + filetoken;
+    struct stat st;
+    stat(filepath.c_str(), &st);
+    int size = st.st_size, bytes = 0, tmp = 0;
+    char buf[BUF_SIZE+1];
+    std::string hdr = "HTTP/1.1 200 OK\r\n"
+      "Cache-Control: no-cache, private\r\n"
+      "Content-Type: text/html\r\n"
+      "Content-Length: ";
+    hdr += std::to_string(size) + "\r\n\r\n";
+    int offset = hdr.size();
+    memset(buf, 0, BUF_SIZE+1);
+    strncpy(buf, hdr.c_str(), offset);
+    FILE *fp = fopen(filepath.c_str(), "rb");
+    while (true) {
+      if (offset == BUF_SIZE || bytes == size) {
+	offset = 0;
+	if (send(client_socket, buf, BUF_SIZE, MSG_NOSIGNAL) < 0)
+	  return -1;
+      }
+      tmp = fread(buf+offset, 1, std::min(size-bytes, BUF_SIZE-offset), fp);
+      bytes += tmp;
+      offset += tmp;
+    }
+    fclose(fp);
+    return 0;
+  }
+  else if (hr.path.substr(0, 9) == "/filename" && hr.method == "GET") {   // "/filename/$fileid
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    std::string filetoken = hr.path.substr(10), filename;
+    db::status res = db_manager.filetoken2name(filetoken, filename);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+      j["filename"] = filename;
+    }
+    else {
+      j["status"] = "Failed";
     }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());

@@ -54,7 +54,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
       j["status"] = "Username exists";
     }
     resp.set_content(j.dump());
-    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()+1);
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
   else if (hr.path == "/login") {
     db::status res = db_manager.sign_in(hr.j_content["name"], hr.j_content["password"]);

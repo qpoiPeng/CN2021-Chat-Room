@@ -49,11 +49,13 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
   json j;
 
   // Handle CORS
-  if(hr.header.find("Sec-Fetch-Mode") != hr.header.end() && hr.header["Sec-Fetch-Mode"] == "cors") {
-    resp.set_header("Access-Control-Allow-Origin", "*");
-    resp.set_header("Access-Control-Allow-Methods", "*");
-    resp.set_header("Access-Control-Allow-Headers", "*");
-  }
+  // if(hr.header.find("Sec-Fetch-Mode") != hr.header.end() && hr.header["Sec-Fetch-Mode"] == "cors") {
+  resp.set_header("Access-Control-Allow-Origin", hr.header["Origin"]);
+  resp.set_header("Access-Control-Allow-Methods", "*");
+  resp.set_header("Access-Control-Allow-Headers", "content-type");
+  resp.set_header("Access-Control-Allow-Credentials", "true");
+
+  // }
 
   if(hr.method == "OPTIONS")
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());

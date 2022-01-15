@@ -79,6 +79,8 @@ namespace db {
 
             status confirm_friend_request(std::string to, std::string source);
 
+            status reject_friend_request(std::string to, std::string source);
+
             status get_friend_list(std::string user, std::vector<std::string>& list);
 
             status write_message(std::string user1, std::string user2, std::string msg);

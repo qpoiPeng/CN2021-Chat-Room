@@ -222,6 +222,18 @@ db::status db::Db_manager::confirm_friend_request(std::string to, std::string so
     return status::OK;
 }
 
+db::status db::Db_manager::reject_friend_request(std::string to, std::string source) {
+
+    cmd = "DELETE FROM FriendRequest WHERE destination ='";
+    cmd += to + "'";
+    cmd += " AND source = '" + source + "'";
+    err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+    CHECK;
+
+    return status::OK;
+}
+
+
 db::status db::Db_manager::delete_friend(std::string user, std::string notfriend) {
   std::vector<std::string> fl;
   get_friend_list(user, fl);
@@ -310,17 +322,6 @@ int main() {
   d.create_friend_request("pqoi", "qpoi");
   d.create_friend_request("npoi", "qpoi");
 
-  d.confirm_friend_request("qpoi", "npoi");
-  d.confirm_friend_request("qpoi", "pqoi");
-
-  d.write_message("qpoi", "pqoi", "hello.");
-  d.write_message("pqoi", "qpoi", "hello, too.");
-  d.write_message("qpoi", "pqoi", "I am qpoi.");
-  d.write_message("qpoi", "pqoi", "Nice to meet you.");
-  std::vector<std::string> l;
-  d.get_all_user(l);
-  for (auto& s : l)
-    std::cout << s << '\n';
 }
 
 #endif

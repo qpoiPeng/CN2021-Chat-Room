@@ -125,6 +125,40 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  else if (hr.path == "/friends/requests" && hr.method == "GET") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    std::vector<std::string> reqlist;
+    db::status res = db_manager.get_friend_request_list(user, reqlist);
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+      j["request list"] = reqlist;
+    }
+    else
+      j["status"] = "Failed";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path == "/friends/requests" && hr.method == "POST") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    db::status res;
+    if (hr.j_content["action"] == "accept") {
+      res = db_manager.confirm_friend_request(user, hr.j_content["friend_name"]);
+    }
+    else if (hr.j_content["action"] == "reject") {
+      // no check if to-be-deleted person exists
+      res = db_manager.reject_friend_request(user, hr.j_content["friend_name"]);
+    }
+    if (res == db::status::OK)
+      j["status"] = "Success";
+    else
+      j["status"] = "Failed";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
   else if (hr.path.substr(0, 5) == "/chat" && hr.method == "GET") {
     CHECK_LOGIN;
     std::string user = get_user(hr), frd = hr.path.substr(6);

@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import { withRouter } from 'react-router-dom';
+import axios from 'axios';
+import * as Constants from '../constants';
 
 const initialState = {
     name: '',
@@ -22,8 +24,8 @@ class Login extends Component {
     }
 
     inputUpdate(e) {
-        const name = e.target.name;
-        const value = e.target.value;
+        const name = e.target.name.trim();
+        const value = e.target.value.trim();
         this.setState({
             [name]: value
         });
@@ -33,10 +35,18 @@ class Login extends Component {
         const { name, password } = this.state;
         console.log("Trying to login");
         if (name && password) {
-            console.log("Logged in successfully.");
-            // alert("Logged in Successfully.");
-            this.props.history.push(`/chat/${name}`, {name: name});
-            // console.log(this.props.history);
+
+            const payload = { name: name, password: password };
+            axios.post(`${Constants.BASEURL}/login`, payload)
+                .then(response => {
+                    console.log(response.data);
+                    if(response.data.status === "Success") {
+                        this.props.history.push(`/chat/${name}`, {name: name});
+                    }
+                    else {
+                        alert(`Login failed. Status: ${response.data.status}`);
+                    }
+                })
         }
     }
 

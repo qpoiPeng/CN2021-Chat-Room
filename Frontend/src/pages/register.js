@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import { withRouter } from 'react-router-dom';
+import axios from 'axios';
+import * as Constants from '../constants';
 
 const initialState = {
     name: '',
@@ -23,8 +25,8 @@ class Register extends Component {
     }
 
     inputUpdate(e) {
-        const name = e.target.name;
-        const value = e.target.value;
+        const name = e.target.name.trim();
+        const value = e.target.value.trim();
         this.setState({
             [name]: value
         });
@@ -33,11 +35,19 @@ class Register extends Component {
     register() {
         const { name, password, reenter_password } = this.state;
         if (name && password && (password === reenter_password)) {
-            // console.log("Registering......");
             // * Post HTTP register request
-            alert("Registered Successfully. Please login.");
-            this.props.changeTab("login");
-            this.props.history.push(`/chat/${name}`);
+            const payload = { name: name, password: password };
+            axios.post(`${Constants.BASEURL}/register`, payload)
+                .then(response => {
+                    console.log(response.data);
+                    if(response.data.status === "Success") {
+                        alert("Registered Successfully. Please login.");
+                        this.props.changeTab("login");
+                    }
+                    else {
+                        alert(`Register failed. Status: ${response.data.status}`);
+                    }
+                })
         }
     }
 

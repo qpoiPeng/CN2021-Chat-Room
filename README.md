@@ -15,7 +15,7 @@
 | POST v | `$BASE_URL/friends` | Add/delete friends: `{action: add/delete, friend_name: friend_name}` |
 | GET v | `$BASE_URL/friends/requests` | Get list of friend requests (in and out) |
 | POST v | `$BASE_URL/friends/requests` | Accept/decline friend_request: `{"action": "accept"/"reject", "friend_name": $friend_name}` |
-| POST almost | `$BASE_URL/file/$filename` | upload a file |
+| POST almost | `$BASE_URL/file/$filename/$friend_name` | upload a file |
 | GET | `$BASE_URL/file/$fileid` | download a file |
 | GET | `$BASE_URL/$username/profile` | Get current user profile information |
 | GET v | `$BASE_URL/api/users` | Get all users |

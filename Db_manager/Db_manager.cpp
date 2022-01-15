@@ -138,14 +138,14 @@ db::status db::Db_manager::create_friend_request(std::string source, std::string
     if (f == destination)
       return status::DUPLICATED_REQUEST;
     
-    cmd = "INSERT INTO FriendRequest (source, destination) VALUES ('";
-    cmd += source + "', '" + destination + "')";
-    err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
-    CHECK;
-    fprintf(stderr, "Db_manager.create_friend_request : %d\n", err);
-    if (err == 19)
-        return status::DUPLICATED_REQUEST;
-    return status::OK;
+  cmd = "INSERT INTO FriendRequest (source, destination) VALUES ('";
+  cmd += source + "', '" + destination + "')";
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+  CHECK;
+  fprintf(stderr, "Db_manager.create_friend_request : %d\n", err);
+  if (err == 19)
+    return status::DUPLICATED_REQUEST;
+  return status::OK;
 }
 
 db::status db::Db_manager::get_friend_request_list(std::string to, std::vector<std::string>& list) {
@@ -154,6 +154,15 @@ db::status db::Db_manager::get_friend_request_list(std::string to, std::vector<s
     err = sqlite3_exec(database, cmd.c_str(), get_request_list, &list, &errmsg);
     CHECK;
     return status::OK;
+}
+
+db::status db::Db_manager::is_friend(std::string user1, std::string user2) {
+  std::vector<std::string> fl;
+  db::status is_friend = get_friend_list(user1, fl);
+  for (auto& f : fl)
+    if (f == user2)
+      return status::OK;
+  return status::NOT_FRIEND;
 }
 
 db::status db::Db_manager::confirm_friend_request(std::string to, std::string source) {
@@ -233,7 +242,6 @@ db::status db::Db_manager::reject_friend_request(std::string to, std::string sou
     return status::OK;
 }
 
-
 db::status db::Db_manager::delete_friend(std::string user, std::string notfriend) {
   std::vector<std::string> fl;
   get_friend_list(user, fl);
@@ -289,6 +297,18 @@ db::status db::Db_manager::write_message(std::string user1, std::string user2, s
   return status::OK;
 }
 
+db::status db::Db_manager::send_file_link(std::string user1, std::string user2, std::string filetoken) {
+  std::string sender = user1;
+  std::string dmname = get_dmname(user1, user2);
+  time_t t = time(NULL);
+  std::string cmd;
+  cmd = "INSERT INTO " + dmname + "(type, sender, content, time) VALUES ('file', '";
+  cmd += sender + "', '" + filetoken + "', " + std::to_string(t) + ")";
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
 db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::vector<db::Message>& chat) {
   std::string dmname = get_dmname(user1, user2);
   cmd = "SELECT * FROM ";
@@ -307,6 +327,15 @@ db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::v
 db::status db::Db_manager::get_all_user(std::vector<std::string>& list) {
   cmd = "SELECT name FROM UserList ORDER BY name";
   err = sqlite3_exec(database, cmd.c_str(), get_request_list, &list, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
+db::status db::Db_manager::add_file(std::string filename, std::string& filetoken) {
+  filetoken = get_token(filename);
+  cmd = "INSERT INTO FileMap (token, name) VALUES ('";
+  cmd += filetoken + "', '" + filename + "')";
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
   CHECK;
   return status::OK;
 }

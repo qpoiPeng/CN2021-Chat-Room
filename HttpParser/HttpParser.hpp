@@ -12,6 +12,6 @@ struct HttpRequest {
   nlohmann::json j_content;
   HttpRequest(const std::string& req);
   HttpRequest(const std::string& req, int client_fd);
-  int download(const char* msg, int client_fd);
+  int download(const char* msg, int client_fd, std::string filename, std::string& filetoken, db::Db_manager& db_manager);
   void show();
 };

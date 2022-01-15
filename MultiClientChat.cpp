@@ -177,6 +177,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     db::status res = db_manager.get_chat(user, frd, chat);
     if (res == db::status::OK) {
       sort(chat.begin(), chat.end(), timecmp);
+      j["status"] = "Success";
       for (int i = 0; i < chat.size(); ++i) {
 	if (chat[i].type == "user") continue;
 	json tmp;
@@ -205,11 +206,25 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
-  else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {
-    if (hr.download(msg, client_socket) == 0)
-      j["status"] = "Success";
-    else
-      j["status"] = "Failed";
+  else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {   // "/file/$filename/$friend_name
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    int pos = hr.path.substr(6).find("/") + 6;
+    std::string frd = hr.path.substr(pos+1), filename = hr.path.substr(6, pos - 6), filetoken;
+    if (db_manager.is_friend(user, frd) != db::status::OK) {
+      j["status"] = "Not friend";
+    }
+    else {
+      if (hr.download(msg, client_socket, filename, filetoken, db_manager) == 0) {
+	if (db_manager.send_file_link(user, frd, filetoken) == db::status::OK)
+	  j["status"] = "Success";
+	else
+	  j["status"] = "Failed";
+      }
+      else
+	j["status"] = "Failed";
+    }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }

@@ -23,7 +23,7 @@ HttpRequest::HttpRequest(const std::string& req) {
     if (cur.size() < 1) break;
     header[cur[0]] = cur[1];
   }
-  if (path == "/file") return;
+  if (path.substr(0, 5) == "/file" && method == "POST") return;
   ++i;
   while (i < lines.size())
     content += lines[i++];
@@ -41,11 +41,13 @@ HttpRequest::HttpRequest(const std::string& req, int client_fd) : HttpRequest(re
   }
 }
 
-int HttpRequest::download(const char* req, int client_fd) {
+int HttpRequest::download(const char* req, int client_fd, std::string filename, std::string& filetoken, db::Db_manager& db_manager) {
   char buf[BUF_SIZE+1];
   memcpy(buf, req, BUF_SIZE+1);
   int bytes = 0, recv_size = BUF_SIZE, tmp;
-  FILE *fp = fopen("123", "wb");    // TODO: create proper file name.
+  db_manager.add_file(filename, filetoken);
+  std::string filepath = "server_dir/" + filetoken;
+  FILE *fp = fopen(filepath.c_str(), "wb");
   while (bytes < stoi(header["Content-Length"])) {
     if (curpos == recv_size) {
       curpos = 0;
@@ -53,11 +55,9 @@ int HttpRequest::download(const char* req, int client_fd) {
       recv_size = recv(client_fd, buf, BUF_SIZE, 0);
       if (recv_size <= 0) return -1;
     }
-    //    tmp = fwrite(buf, 1, std::min(header["Content-Length"]-curpos, recv_size-curpos), fp);
-    //    bytes += tmp;
-    //    curpos += tmp;
-    fputc(buf[curpos++], fp);
-    ++bytes;
+    tmp = fwrite(buf+curpos, 1, std::min(stoi(header["Content-Length"])-bytes, recv_size-curpos), fp);
+    bytes += tmp;
+    curpos += tmp;
   }
   fclose(fp);
   return 0;

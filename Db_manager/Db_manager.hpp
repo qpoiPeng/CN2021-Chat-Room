@@ -61,6 +61,11 @@ namespace db {
 		  "name TEXT NOT NULL) ";
                 err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
                 CHECK;
+                cmd = "CREATE TABLE IF NOT EXISTS FileMap ("
+		  "token TEXT PRIMARY KEY, "
+		  "name TEXT NOT NULL) ";
+                err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+                CHECK;
             }
 
             ~Db_manager() {
@@ -83,7 +88,11 @@ namespace db {
 
             status get_friend_list(std::string user, std::vector<std::string>& list);
 
+            status is_friend(std::string user1, std::string user2);
+
             status write_message(std::string user1, std::string user2, std::string msg);
+
+            status send_file_link(std::string user1, std::string user2, std::string filetoken);
 
             status get_chat(std::string user1, std::string user2, std::vector<Message>& chat);
 
@@ -94,6 +103,8 @@ namespace db {
             status delete_friend(std::string user, std::string notfriend);
 
             status get_all_user(std::vector<std::string>& list);
+
+            status add_file(std::string filename, std::string& filetoken);
     private:
             sqlite3 *database;
             std::string cmd;

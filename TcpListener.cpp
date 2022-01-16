@@ -2,10 +2,14 @@
 
 int TcpListener::init() {
 
-    if ((m_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((m_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         fprintf(stderr, "create socket failed...\n");
         return -1;
     }
+
+    int iSetOption = 1;
+    setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&iSetOption,
+            sizeof(iSetOption));
 
     // Initialize listener to the specified ip address and port
     sockaddr_in hint;
@@ -23,6 +27,7 @@ int TcpListener::init() {
         m_clients[i] = TcpClient(0, i);
         m_fd2id[i] = m_id2fd[i] = -1;
     }
+
 
     // Bind socket to port
     if (bind(m_socket, (sockaddr*)&(hint), sizeof(hint)) < 0) {
@@ -43,7 +48,7 @@ int TcpListener::init() {
     else if (errno == ENOENT) {
       mkdir("server_dir", 0744);
     }
-    
+
     return 0;
 }
 

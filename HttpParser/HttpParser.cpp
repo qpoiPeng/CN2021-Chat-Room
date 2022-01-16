@@ -14,6 +14,7 @@ void HttpRequest::show() {
 HttpRequest::HttpRequest(const std::string& req) {
   std::vector<std::string> lines = db::split_string(req, "\r\n");
   std::vector<std::string> cur = db::split_string(lines[0]);
+  header["Origin"] = "0.0.0.1";
   curpos = lines[0].size() + 2;
   method = cur[0]; path = cur[1];
   int i = 1;

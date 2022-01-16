@@ -336,6 +336,31 @@ db::status db::Db_manager::get_chat(std::string user1, std::string user2, std::v
   return status::OK;
 }
 
+db::status db::Db_manager::get_unread(std::string user1, std::string user2, std::vector<db::Message>& chat) {
+  std::string query_user = user1, s, target_user = user2;
+  std::string dmname = get_dmname(user1, user2);
+  cmd = "SELECT time FROM ";
+  cmd += dmname + " WHERE type = 'user' AND content = '" + query_user + "'";
+  err = sqlite3_exec(database, cmd.c_str(), get_request_string, &s, &errmsg);
+  CHECK;
+  cmd = "SELECT * FROM ";
+  cmd += dmname + " WHERE type != 'user' AND time >= " + s + " AND sender = '" + target_user + "'";
+  err = sqlite3_exec(database, cmd.c_str(), get_message, &chat, &errmsg);
+  CHECK;
+  for (int i = 0; i < chat.size(); ++i) {
+    if (chat[i].from == user1)
+      chat[i].to = user2;
+    else if (chat[i].from == user2)
+      chat[i].to = user1;
+  }
+  int t = time(NULL);
+  cmd = "UPDATE " + dmname + " SET time = '" + std::to_string(t) + "' WHERE type = 'user' AND content = '" + query_user + "'";
+  std::cerr << cmd << '\n';
+  err = sqlite3_exec(database, cmd.c_str(), 0, 0, &errmsg);
+  CHECK;
+  return status::OK;
+}
+
 db::status db::Db_manager::get_all_user(std::vector<std::string>& list) {
   cmd = "SELECT name FROM UserList ORDER BY name";
   err = sqlite3_exec(database, cmd.c_str(), get_request_list, &list, &errmsg);
@@ -359,9 +384,37 @@ int main() {
   d.sign_up("qpoi", "qpoi");
   d.sign_up("pqoi", "pqoi");
   d.sign_up("npoi", "npoi");
+  d.sign_up("asdf", "asdf");
+  d.sign_up("qwer", "qwer");
 
   d.create_friend_request("pqoi", "qpoi");
   d.create_friend_request("npoi", "qpoi");
+
+  d.confirm_friend_request("pqoi", "qpoi");
+  std::vector<db::Message> unread;
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.get_unread("pqoi", "qpoi", unread);
+  std::cout << unread.size() << '\n';
+  unread.clear();
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.get_unread("pqoi", "qpoi", unread);
+  std::cout << unread.size() << '\n';
+  unread.clear();
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.write_message("pqoi", "qpoi", "GG");
+  sleep(1);
+  d.write_message("qpoi", "pqoi", "GG");
+  sleep(1);
+  d.write_message("qpoi", "pqoi", "GG");
+  d.get_unread("pqoi", "qpoi", unread);
+  std::cout << unread.size() << '\n';
 
 }
 

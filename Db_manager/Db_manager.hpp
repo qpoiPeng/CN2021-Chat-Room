@@ -96,6 +96,8 @@ namespace db {
 
             status get_chat(std::string user1, std::string user2, std::vector<Message>& chat);
 
+            status get_unread(std::string user1, std::string user2, std::vector<Message>& chat);
+
             status token2name(std::string token, std::string& name);
 
             status filetoken2name(std::string filetoken, std::string& name);

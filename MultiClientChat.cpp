@@ -19,7 +19,7 @@ using json = nlohmann::json;
     return 0;								\
   }
 #define CHECK_USER if (user == "") {					\
-    j["status"] = "NOT LOGIN";						\
+    j["status"] = "NO USER";						\
     resp.set_content(j.dump());						\
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size()); \
     return 0;								\
@@ -35,7 +35,7 @@ std::string MultiClientChat::get_user(HttpRequest& hr) {
   if (pos != -1) {
     int endpos = hr.header["Cookie"].find(";", pos+1);
     endpos = endpos == -1? INT_MAX : endpos;
-    std::string token = hr.header["Cookie"].substr(pos+3, endpos-pos);
+    std::string token = hr.header["Cookie"].substr(pos+3, endpos-pos-3);
     db_manager.token2name(token, user);
   }
   return user;
@@ -51,10 +51,10 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 
   // Handle CORS
   // if(hr.header.find("Sec-Fetch-Mode") != hr.header.end() && hr.header["Sec-Fetch-Mode"] == "cors") {
-  resp.set_header("Access-Control-Allow-Origin", hr.header["Origin"]);
-  resp.set_header("Access-Control-Allow-Methods", "*");
-  resp.set_header("Access-Control-Allow-Headers", "content-type");
-  resp.set_header("Access-Control-Allow-Credentials", "true");
+    resp.set_header("Access-Control-Allow-Origin", hr.header["Origin"]);
+    resp.set_header("Access-Control-Allow-Methods", "*");
+    resp.set_header("Access-Control-Allow-Headers", "content-type");
+    resp.set_header("Access-Control-Allow-Credentials", "true");
 
   // }
 
@@ -72,7 +72,6 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
   else if (hr.path == "/login") {
-    std::cerr << "HERE\n";
     db::status res = db_manager.sign_in(hr.j_content["name"], hr.j_content["password"]);
     if (res == db::status::OK) {
       std::string name = hr.j_content["name"], token;
@@ -85,18 +84,12 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
       j["status"] = "Failed";
     }
     resp.set_content(j.dump());
-    std::cerr << resp.dump();
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
   else if (hr.path == "/friends" && hr.method == "GET") {
     CHECK_LOGIN;
     std::string user = get_user(hr);
     CHECK_USER;
-    if (user == "") {
-      resp.set_content(j.dump());
-      send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
-      return 0;
-    }
     std::vector<std::string> friends;
     db::status res = db_manager.get_friend_list(user, friends);
     if (res == db::status::OK) {
@@ -197,6 +190,29 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  else if (hr.path.substr(0, 7) == "/unread") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr), frd = hr.path.substr(8);
+    CHECK_USER;
+    std::vector<db::Message> chat;
+    db::status res = db_manager.get_unread(user, frd, chat);
+    if (res == db::status::OK) {
+      sort(chat.begin(), chat.end(), timecmp);
+      j["status"] = "Success";
+      for (int i = 0; i < chat.size(); ++i) {
+	if (chat[i].type == "user") continue;
+	json tmp;
+	tmp["type"] = chat[i].type;
+	tmp["timestamp"] = chat[i].timestamp;
+	tmp["from"] = chat[i].from;
+	tmp["to"] = chat[i].to;
+	tmp["content"] = chat[i].content;
+	j["messages"].push_back(tmp);
+      }
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
   else if (hr.path.substr(0, 5) == "/chat" && hr.method == "POST") {
     CHECK_LOGIN;
     std::string user = get_user(hr), frd = hr.path.substr(6);
@@ -280,6 +296,59 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else if (hr.path == "/console/upload") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    std::string filename = hr.j_content["filename"], frd = hr.j_content["friend_name"], filetoken;
+    j["status"] = "Ready";
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+    int size = hr.j_content["size"], bytes = 0, tmp;
+    db_manager.add_file(filename, filetoken);
+    std::string filepath = "server_dir/" + filetoken;
+    FILE *fp = fopen(filepath.c_str(), "wb");
+    char buf[BUF_SIZE+1];
+    while (bytes < size) {
+      memset(buf, 0, BUF_SIZE+1);
+      recv(client_socket, buf, BUF_SIZE, MSG_WAITALL);
+      std::cerr << buf[0] << '\n';
+      tmp = fwrite(buf, 1, std::min(size-bytes, BUF_SIZE), fp);
+      bytes += tmp;
+    }
+    db_manager.send_file_link(user, frd, filetoken);
+    fclose(fp);
+  }
+  else if (hr.path == "/console/download") {
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
+    CHECK_USER;
+    std::string filetoken = hr.j_content["filetoken"], filename;
+    db::status res = db_manager.filetoken2name(filetoken, filename);
+    std::string filepath = "server_dir/" + filetoken;
+    FILE* fp = fopen(filepath.c_str(), "rb");
+    struct stat st;
+    stat(filepath.c_str(), &st);
+    int size = st.st_size, bytes = 0, tmp = 0;
+    if (res == db::status::OK) {
+      j["status"] = "Success";
+      j["size"] = size;
+      j["filename"] = filename;
+    }
+    else {
+      j["status"] = "Failed";
+    }
+    resp.set_content(j.dump());
+    send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+    
+    char buf[BUF_SIZE+1];
+    while (bytes < size) {
+      memset(buf, 0, BUF_SIZE+1);
+      bytes += fread(buf, 1, std::min(size - bytes, BUF_SIZE), fp);
+      if (send(client_socket, buf, BUF_SIZE, MSG_NOSIGNAL) < 0)
+        return -1;
+    }
   }
   else if (hr.path == "/api/users" && hr.method == "GET") {
     std::vector<std::string> userlist;

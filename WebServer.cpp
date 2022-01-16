@@ -10,10 +10,15 @@
 // Handler for when a message is received from the client
 int WebServer::on_message_received(int client_socket, const char *msg, int length) {
 
-
     // Parse out the document requested (gives all strings separated by spaces)
     std::istringstream iss(msg);
     std::vector<std::string> parsed((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
+
+    if(parsed[0] != "GET") {
+        std::cerr << msg << std::endl;
+        // handle_post_request(client_socket, parsed);
+        return 0;
+    }
 
     std::string content = "<h1>404 Not Found</h1>";
     std::string path = "/index.html";
@@ -62,7 +67,6 @@ int WebServer::on_message_received(int client_socket, const char *msg, int lengt
     }
     f.close();
 
-
     // Write the document back to the client
     std::ostringstream oss;
     oss << "HTTP/1.1 " << statusCode << " OK\n";
@@ -79,6 +83,14 @@ int WebServer::on_message_received(int client_socket, const char *msg, int lengt
 
     return 0;
 }
+
+int WebServer::handle_post_request(int client_socket, std::vector<std::string> parsed) {
+    for (auto ps : parsed)
+        std::cerr << ps << std::endl;
+    return 0;
+}
+
+
 
 // Handler for client connections
 int WebServer::on_client_connected(int client_socket) {

@@ -1,6 +1,17 @@
 import React, { Component } from 'react';
+import * as Constants from '../constants';
 
 class Messages extends Component {
+
+    isImage = (filename) => {
+        let splitext = filename.split(".");
+
+        if(splitext.length <= 1)
+            return false;
+
+        return splitext[1] == "jpg" || splitext[1] == "png" || splitext[1] == "jpeg" || splitext[1] == "JPEG" || splitext[1] == "PNG";
+    }
+
     render() {
         return (
             <div className="messages">
@@ -12,7 +23,12 @@ class Messages extends Component {
                                     <div className={message.to === this.props.friend ? "msg align-right" : "msg"}>
                                         <h4>{message.from}</h4>
                                         <div className="body">
-                                            <p>{message.content}</p>
+                                            {message.type === "message" ?
+                                            <p>{message.content}</p> :
+                                            this.isImage(message.content) ?
+                                            <img src={Constants.BASEURL + "/server_dir/" + message.content}/> :
+                                            <a href={Constants.BASEURL + "/server_dir/" + message.content}>{message.content}</a>
+                                            }
                                         </div>
                                     </div>
                                     <span className={message.to === this.props.friend ? "createdDate text-right" : "createdDate"}>{message.timestamp}</span>

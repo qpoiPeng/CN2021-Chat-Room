@@ -16,8 +16,11 @@ class WebServer : public TcpListener {
         // Handler for client disconnections
         virtual int on_client_disconnected(int client_socket);
 
+        int handle_post_request(int client_socket, std::vector<std::string> parsed);
+
         std::vector<std::string> split_string(std::string s, std::string delim);
 
     private:
+        int state;
 
 };

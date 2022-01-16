@@ -6,8 +6,8 @@ server:server.cpp TcpListener.cpp MultiClientChat.cpp Db_manager/Db_manager.cpp 
 web: web_client.cpp TcpListener.cpp WebServer.cpp
 	g++ -std=c++11 -o web_client web_client.cpp TcpListener.cpp WebServer.cpp -lpthread
 
-console: console_client.cpp
-	g++ -std=c++11 -o console_client console_client.cpp
+console: console_client.cpp HttpParser/HttpParser.cpp HttpParser/HttpResponse.cpp Db_manager/Db_manager.cpp
+	g++ -std=c++11 -lsqlite3 -o console_client console_client.cpp HttpParser/HttpParser.cpp HttpParser/HttpResponse.cpp Db_manager/Db_manager.cpp
 
 clean:
 	rm console_client web_client server

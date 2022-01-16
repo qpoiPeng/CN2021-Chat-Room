@@ -14,9 +14,11 @@
 #include <dirent.h>
 #include <iostream>
 #include <cstring>
-
-char buf[BUF_SIZE+1] = {};
-char rbuf[BUF_SIZE+1] = {};  // only for recv.
+#include "HttpParser/HttpParser.hpp"
+#include "HttpParser/HttpResponse.hpp"
+#include "Db_manager/Db_manager.hpp"
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
 
 struct Client {
   int conn_fd;
@@ -24,42 +26,67 @@ struct Client {
   unsigned short port;
   sockaddr_in sadr;
   socklen_t sadr_len;
+  std::string token;
+  char buf[BUF_SIZE+1] = {};
+  char rbuf[BUF_SIZE+1] = {};  // only for recv.
+  int init(char ip[]) {
+    std::string s = ip;
+    strncpy(this->ip, ip, 127);
+    token = "";
+    port = std::stoi(s.substr(s.find(":") + 1, s.length() - s.find(":") - 1));
+    strcpy(this->ip, s.substr(0, s.find(":")).c_str());
+    DIR *dir = opendir("client_dir");
+    if (dir) {
+      closedir(dir);
+    }
+    if (errno == ENOENT) {
+      mkdir("client_dir", 0744);
+    }
+    return 0;
+  }
+  int request(std::string method, std::string path, json& j) {
+    sadr.sin_family = AF_INET;
+    sadr.sin_addr.s_addr = inet_addr(ip);
+    sadr.sin_port = htons(port);
+    sadr_len = sizeof(sadr);
+    if ((conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+      fprintf(stderr, "create socket failed...\n");
+      return -1;
+    }
+    if (connect(conn_fd, (sockaddr*)&sadr, sizeof(sadr)) < 0) {
+      fprintf(stderr, "connect failed...\n");
+      return -1;
+    }
+    std::string req = method + " " + path + " HTTP/1.1\r\n";
+    req += "Accept: */*\r\n";
+    req += "Connection: keep-alive\r\n";
+    if (token != "")
+      req += "Cookie: id=" + token + "\r\n";
+    if (j.dump() != "null")
+      req += "Content-Length: " + std::to_string(j.dump().size()) + "\r\n";
+    req += "\r\n";
+    if (j.dump() != "null")
+      req += j.dump();
+    std::cerr << req << '\n';
+    send(conn_fd, req.c_str(), req.size(), 0);
+    std::cerr << "HERE!\n";
+    int offset = 0;
+    while (recv(conn_fd, buf+offset, 1, 0)) {
+      if (buf[offset++] == '\xff')
+	break;
+    }
+    buf[--offset] = 0;
+    req = buf;
+    std::cerr << req << '\n';
+    HttpResponse resp(req);
+    resp.j_content = nlohmann::json::parse(resp.content);
+    std::cerr << resp.dump() << '\n';
+    return 0;
+  }
 };
 
-void clear_buf() {
-  memset(buf, 0, BUF_SIZE+1);
-}
-void clear_rbuf() {
-  memset(rbuf, 0, BUF_SIZE+1);
-}
-
-/* return the socket file descriptor */
-int init_client(Client *client, char ip[]) {
-  std::string s = ip;
-  client->port = std::stoi(s.substr(s.find(":") + 1, s.length() - s.find(":") - 1));
-  strcpy(client->ip, s.substr(0, s.find(":")).c_str());
-  client->sadr.sin_family = AF_INET;
-  client->sadr.sin_addr.s_addr = inet_addr(client->ip);
-  client->sadr.sin_port = htons(client->port);
-  client->sadr_len = sizeof(client->sadr);
-  if ((client->conn_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    fprintf(stderr, "create socket failed...\n");
-    return -1;
-  }
-  if (connect(client->conn_fd, (sockaddr*)&client->sadr, sizeof(client->sadr)) < 0) {
-    fprintf(stderr, "connect failed...\n");
-    return -1;
-  }
-  DIR *dir = opendir("client_dir");
-  if (dir) {
-    closedir(dir);
-  }
-  if (errno == ENOENT) {
-    mkdir("client_dir", 0744);
-  }
-  return 0;
-}
-
+Client client;
+/*
 void sign_up(int fd) {
   constexpr char username_prompt[] = "Username: ";
   constexpr char password_prompt[] = "Password: ";
@@ -159,17 +186,43 @@ int home(int fd) {
   return 0;
 }
 
+*/
+int start() {
+  constexpr char prompt[] = "(1) login  (2) register\n";
+  constexpr char name_prompt[] = "username: ";
+  constexpr char password_prompt[] = "password: ";
+
+  json j;
+  printf("%s", prompt);
+  std::string s;
+  std::getline(std::cin, s);
+  if (s == "1") {
+    std::string name, password;
+    printf("%s", name_prompt);
+    std::getline(std::cin, name);
+    printf("%s", password_prompt);
+    std::getline(std::cin, password);
+    j["name"] = name;
+    j["password"] = password;
+    client.request("POST", "/login", j);
+    return 0;
+  }
+  else if (s == "2") {
+
+  }
+  else return 1;
+}
+
 int main(int argc, char *argv[]) {
-
     assert(argc > 1);
-    int port = atoi(argv[1]);
-
-    Client client;
     std::string s;
     assert(argc > 1);
-    if (init_client(&client, argv[1]) < 0)
+    if (client.init(argv[1]) < 0)
       return -1;
-
+    
+    /* login */
+    while (start());
+    /*    
     while (true) {
         clear_buf();
 
@@ -198,4 +251,5 @@ int main(int argc, char *argv[]) {
             break;
         }
     }
+    */
 }

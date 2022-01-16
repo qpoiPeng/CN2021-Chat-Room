@@ -46,5 +46,6 @@ std::string HttpResponse::dump() {
   for (auto&& key : header)
     rsp += key.first + ": " + key.second + "\r\n";
   rsp += "\r\n" + content + "\r\n";
+  rsp += "\xff";
   return rsp;
 }

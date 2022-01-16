@@ -26,7 +26,7 @@ class App extends Component {
       <div className={classNames({'App': true, 'site_loaded': this.state.site_loaded})}>
         <Router>
           <Switch>
-            <Route path="/chat/:name" component={Chat} />
+            <Route path="/:name/chat" component={Chat} />
             <Route path="/" component={Home} />
           </Switch>
         </Router>

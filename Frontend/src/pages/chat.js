@@ -49,8 +49,34 @@ class Chat extends Component {
             user: this.props.match.params.name
         }
 
+        // Regain information every two seconds
+        // this.interval = setInterval(() => {
+        //     this.getAllUsers();
+        //     this.getAllFriends();
+        //     this.getAllRequests();
+        //     this.refetchMessage();
+        // }, 2000);
+
         this.setState({user: params.user});
 
+        this.getAllUsers();
+        this.getAllFriends();
+        this.getAllRequests();
+
+        // Chat with friend if already have friend to chat with
+        const {pathname} = this.props.location;
+        const currentFriend = pathname.split("/")[3];
+        if(currentFriend && currentFriend !== '') {
+            // this.setState({friend: currentFriend});
+            // this.chatWith(currentFriend);
+            this.setState({ friend: currentFriend }, () => this.refetchMessage());
+        }
+    }
+
+    getAllUsers = () => {
+        const params = {
+            user: this.props.match.params.name
+        }
         // * Get all users list
         axios.get(`${Constants.BASEURL}/api/users`)
             .then(response => {
@@ -59,7 +85,9 @@ class Chat extends Component {
                     return user !== params.user;
                 })});
             });
+    }
 
+    getAllFriends = () => {
         // * Get user friend list
         axios.get(`${Constants.BASEURL}/friends`, {withCredentials: true})
             .then(response => {
@@ -71,7 +99,9 @@ class Chat extends Component {
                 else
                     console.log("GET /friends failed");
             });
+    }
 
+    getAllRequests = () => {
         // * Get friend requests
         axios.get(`${Constants.BASEURL}/friends/requests`, {withCredentials: true})
             .then(response => {
@@ -82,15 +112,6 @@ class Chat extends Component {
                 else
                     console.log("GET /friends/requests failed");
             });
-
-        // Chat with friend if already have friend to chat with
-        const {pathname} = this.props.location;
-        const currentFriend = pathname.split("/")[3];
-        if(currentFriend && currentFriend !== '') {
-            // this.setState({friend: currentFriend});
-            // this.chatWith(currentFriend);
-            this.setState({ friend: currentFriend }, () => this.refetchMessage());
-        }
     }
 
     scrollToBottom() {
@@ -129,6 +150,9 @@ class Chat extends Component {
     refetchMessage() {
 
         var friend = this.state.friend;
+
+        if(friend == '')
+            return 0;
 
         var messages;
 

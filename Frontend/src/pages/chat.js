@@ -203,6 +203,11 @@ class Chat extends Component {
     newMessage(e) {
         e.preventDefault()
 
+        if(this.state.newMsg === "") {
+            alert("Can not send empty message");
+            return 0;
+        }
+
         // * Post create new message request
         const payload = {message: this.state.newMsg};
         axios.post(`${Constants.BASEURL}/chat/${this.state.friend}`,payload, {withCredentials: true})
@@ -284,25 +289,20 @@ class Chat extends Component {
         event.preventDefault()
         const formData = new FormData();
         formData.append("selectedFile", this.state.selectedFile);
-        try {
-            const response = await axios({
-                method: "post",
-                url: `${Constants.BASEURL}/file/test.pdf/${this.state.friend}`,
-                data: formData,
-                headers: { "Content-Type": "multipart/form-data" },
-                useCredentials: true
-            });
-            console.log(response);
-        } catch(error) {
-            console.log(error)
-        }
+
+        axios.post(`${Constants.BASEURL}/sendFile/${this.state.friend}`, formData, {withCredentials: true, headers: {"Content-Type": "multipart/form-data"}})
+            .then(response => {
+                console.log(response.data.status);
+                this.refetchMessage();
+            })
+            .catch(err => {
+                console.log(err);
+            })
     }
 
     handleFileSelect = (event) => {
         this.setState({selectedFile: event.target.files[0]});
     }
-
-
 
     render() {
 
@@ -341,10 +341,10 @@ class Chat extends Component {
                                         <i className="fab fa-telegram-plane"></i>
                                     </button>
                                 </div>
-                                <form onSubmit={this.handleSubmit}>
-                                    <input type="file" onChange={this.handleFileSelect}/>
-                                    <input type="submit" value="Upload File" />
-                                </form>
+                            </form>
+                            <form onSubmit={this.handleSubmit}>
+                                <input type="file" onChange={this.handleFileSelect}/>
+                                <input type="submit" value="Upload File" />
                             </form>
                         </div>
 

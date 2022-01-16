@@ -88,6 +88,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     std::cerr << resp.dump();
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * Get friend list of user
   else if (hr.path == "/friends" && hr.method == "GET") {
     CHECK_LOGIN;
     std::string user = get_user(hr);
@@ -109,6 +110,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * POST: add friends (send friend requests) or delete friends
   else if (hr.path == "/friends" && hr.method == "POST") {
     CHECK_LOGIN;
     std::string user = get_user(hr);
@@ -140,6 +142,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * GET friend request list
   else if (hr.path == "/friends/requests" && hr.method == "GET") {
     CHECK_LOGIN;
     std::string user = get_user(hr);
@@ -155,6 +158,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * Accept or reject friend requests
   else if (hr.path == "/friends/requests" && hr.method == "POST") {
     CHECK_LOGIN;
     std::string user = get_user(hr);
@@ -174,6 +178,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * Get chat history
   else if (hr.path.substr(0, 5) == "/chat" && hr.method == "GET") {
     CHECK_LOGIN;
     std::string user = get_user(hr), frd = hr.path.substr(6);
@@ -197,6 +202,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * Send new message
   else if (hr.path.substr(0, 5) == "/chat" && hr.method == "POST") {
     CHECK_LOGIN;
     std::string user = get_user(hr), frd = hr.path.substr(6);
@@ -222,13 +228,13 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     }
     else {
       if (hr.download(msg, client_socket, filename, filetoken, db_manager) == 0) {
-	if (db_manager.send_file_link(user, frd, filetoken) == db::status::OK)
-	  j["status"] = "Success";
-	else
-	  j["status"] = "Failed";
+      if (db_manager.send_file_link(user, frd, filetoken) == db::status::OK)
+        j["status"] = "Success";
+      else
+        j["status"] = "Failed";
       }
       else
-	j["status"] = "Failed";
+  j["status"] = "Failed";
     }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
@@ -281,6 +287,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
+  // * Get all existing users
   else if (hr.path == "/api/users" && hr.method == "GET") {
     std::vector<std::string> userlist;
     db::status res = db_manager.get_all_user(userlist);

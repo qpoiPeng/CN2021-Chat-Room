@@ -46,17 +46,17 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
 
   HttpRequest hr(msg, client_socket);
   hr.show();
+
+  std::cerr << hr.path.substr(0, 10) << std::endl;
+
   HttpResponse resp;
   json j;
 
   // Handle CORS
-  // if(hr.header.find("Sec-Fetch-Mode") != hr.header.end() && hr.header["Sec-Fetch-Mode"] == "cors") {
   resp.set_header("Access-Control-Allow-Origin", hr.header["Origin"]);
   resp.set_header("Access-Control-Allow-Methods", "*");
   resp.set_header("Access-Control-Allow-Headers", "content-type");
   resp.set_header("Access-Control-Allow-Credentials", "true");
-
-  // }
 
   if(hr.method == "OPTIONS")
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
@@ -217,31 +217,35 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
-  else if (hr.path.substr(0, 5) == "/file" && hr.method == "POST") {   // "/file/$filename/$friend_name
+  else if (hr.path.substr(0, 9) == "/sendFile" && hr.method == "POST") {   // "/file/$filename/$friend_name
+
     CHECK_LOGIN;
     std::string user = get_user(hr);
     CHECK_USER;
-    int pos = hr.path.substr(6).find("/") + 6;
-    std::string frd = hr.path.substr(pos+1), filename = hr.path.substr(6, pos - 6), filetoken;
+    std::vector<std::string> _tmp = db::split_string(hr.path, "/");
+    std::string frd = _tmp[2], filetoken;
+
+    std::cerr << "Sending file to " << frd << std::endl;
+
     if (db_manager.is_friend(user, frd) != db::status::OK) {
       j["status"] = "Not friend";
     }
     else {
-      if (hr.download(msg, client_socket, filename, filetoken, db_manager) == 0) {
-      if (db_manager.send_file_link(user, frd, filetoken) == db::status::OK)
-        j["status"] = "Success";
-      else
-        j["status"] = "Failed";
+      if (hr.download(filetoken, db_manager)) {
+        if (db_manager.send_file_link(user, frd, filetoken) == db::status::OK)
+          j["status"] = "Success";
+        else
+          j["status"] = "Db_manager send file link failed";
       }
       else
-  j["status"] = "Failed";
+        j["status"] = "Download failed";
     }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
   }
   else if (hr.path.substr(0, 6) == "/file/" && hr.method == "GET") {   // "/file/$fileid
-    //    CHECK_LOGIN;
-    //    std::string user = get_user(hr);
+    CHECK_LOGIN;
+    std::string user = get_user(hr);
     std::string filetoken = hr.path.substr(6), filename;
     db_manager.filetoken2name(filetoken, filename);
     std::string filepath = "server_dir/" + filetoken;
@@ -261,8 +265,8 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     while (true) {
       if (offset == BUF_SIZE || bytes == size) {
 	offset = 0;
-	if (send(client_socket, buf, BUF_SIZE, 0) < 0)
-	  return -1;
+	    if (send(client_socket, buf, BUF_SIZE, 0) < 0)
+	    return -1;
       }
       tmp = fread(buf+offset, 1, std::min(size-bytes, BUF_SIZE-offset), fp);
       bytes += tmp;
@@ -299,6 +303,72 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
       j["status"] = "Failed";
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
+  }
+  else {
+    // Parse out the document requested (gives all strings separated by spaces)
+    std::istringstream iss(msg);
+    std::vector<std::string> parsed((std::istream_iterator<std::string>(iss)), std::istream_iterator<std::string>());
+
+    if(parsed[0] != "GET") {
+        std::cerr << msg << std::endl;
+        return 0;
+    }
+
+    std::string content = "<h1>404 Not Found</h1>";
+    std::string path = "/index.html";
+    std::string content_type = "text/html";
+    int statusCode = 404;
+
+    std::cerr << parsed[1] << std::endl;
+
+    if (parsed.size() >= 3 && parsed[0] == "GET") {
+        path = parsed[1];
+
+        if(path == "/")
+            path = "/index.html";
+        else {
+            std::string ext = path.substr(path.find_last_of(".") + 1);
+            if(ext == "css")
+                content_type = "text/css";
+            else if(ext == "js")
+                content_type = "text/javascript";
+            else if(ext == "jpeg" || ext == "jpg" || ext == "JPG" || ext == "JPEG")
+                content_type = "image/jpeg";
+            else if(ext == "png" || ext == "PNG")
+                content_type = "image/png";
+            else if(ext == "html")
+                content_type = "text/html";
+            else
+                content_type = "text/plain";
+        }
+    }
+
+    // Catch all mechanism
+    std::vector<std::string> paths = db::split_string(path, "/");
+
+    // Open the document in the local file system
+    std::ifstream f("server_dir/" + paths.back());
+
+    if (f.good()) {
+        std::string str((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        content = str;
+        statusCode = 200;
+    }
+    f.close();
+
+    // Write the document back to the client
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << statusCode << " OK\n";
+    oss << "Cache-Control: no-cache, private\n";
+    oss << "Content-Type: " << content_type << "\n";
+    oss << "Content-Length: " << content.size() << "\n";
+    oss << "\n";
+    oss << content;
+
+    std::string output = oss.str();
+    int size = output.size() + 1;
+
+    send_to_client(client_socket, output.c_str(), size);
   }
   return 0;
 }

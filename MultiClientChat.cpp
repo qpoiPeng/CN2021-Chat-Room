@@ -253,7 +253,7 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     while (true) {
       if (offset == BUF_SIZE || bytes == size) {
 	offset = 0;
-	if (send(client_socket, buf, BUF_SIZE, MSG_NOSIGNAL) < 0)
+	if (send(client_socket, buf, BUF_SIZE, 0) < 0)
 	  return -1;
       }
       tmp = fread(buf+offset, 1, std::min(size-bytes, BUF_SIZE-offset), fp);

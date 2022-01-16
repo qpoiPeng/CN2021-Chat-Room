@@ -350,12 +350,12 @@ int MultiClientChat::on_message_received(int client_socket, const char *msg, int
     }
     resp.set_content(j.dump());
     send_to_client(client_socket, resp.dump().c_str(), resp.dump().size());
-    
+
     char buf[BUF_SIZE+1];
     while (bytes < size) {
       memset(buf, 0, BUF_SIZE+1);
       bytes += fread(buf, 1, std::min(size - bytes, BUF_SIZE), fp);
-      if (send(client_socket, buf, BUF_SIZE, MSG_NOSIGNAL) < 0)
+      if (send(client_socket, buf, BUF_SIZE, 0) < 0)
         return -1;
     }
   }
